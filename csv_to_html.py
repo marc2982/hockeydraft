@@ -7,13 +7,13 @@ from collections import namedtuple
 Team = namedtuple("Team", "short colour img")
 Pick = namedtuple("Pick", "team games")
 Winner = namedtuple("Winner", "team games")
-Points = namedtuple("Points", "team games bonus")
+Scoring = namedtuple("Scoring", "team games bonus")
 
-POINTS = [
-    Points(1, 2, 3),
-    Points(2, 3, 4),
-    Points(3, 4, 5),
-    Points(4, 5, 6)
+SCORING = [
+    Scoring(1, 2, 3),
+    Scoring(2, 3, 4),
+    Scoring(3, 4, 5),
+    Scoring(4, 5, 6)
 ]
 
 DATA = {
@@ -88,13 +88,16 @@ def make_html(trs):
     sorted_persons = sorted(trs.keys())
     for person in sorted_persons:
         points = 0
+        possible_points = 0
         picks = trs[person]
         s.append("<tr>")
         s.append(f"<td><b>{person}</b></td>")
 
         for (i, pick) in enumerate(picks):
             winner = WINNERS[i]
-            points += get_points(POINTS[0], pick, winner)
+            scoring = SCORING[0]  # TODO
+            points += get_points(scoring, pick, winner)
+            possible_points += calculate_possible_points(scoring, pick, winner)
             team_class = get_team_class(pick, winner)
             games_class = get_games_class(pick, winner)
 
@@ -112,6 +115,7 @@ def make_html(trs):
             s.append("</td>")
 
         s.append(f"<td><b>{points}</b></td>")
+        s.append(f"<td><b>{possible_points}</b></td>")
         s.append("</tr>\n")
 
     s.append("</table></div>")
@@ -136,7 +140,7 @@ def get_games_class(pick: Pick, winner: Winner):
     return "incorrect"
 
 
-def get_points(scoring: Points, pick: Pick, winner: Winner) -> int:
+def get_points(scoring: Scoring, pick: Pick, winner: Winner) -> int:
     if not winner:
         return 0
     points = 0
@@ -144,6 +148,12 @@ def get_points(scoring: Points, pick: Pick, winner: Winner) -> int:
     points += scoring.games if pick.games == winner.games else 0
     points += scoring.bonus if points == scoring.team + scoring.games else 0
     return points
+
+
+def calculate_possible_points(scoring: Scoring, pick: Pick, winner: Winner) -> int:
+    if not winner:
+        return scoring.team + scoring.games + scoring.bonus
+    return get_points(scoring, pick, winner)
 
 
 def write_html(html, filename):
