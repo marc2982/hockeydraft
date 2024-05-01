@@ -7,7 +7,14 @@ from collections import namedtuple
 Team = namedtuple("Team", "short colour img")
 Pick = namedtuple("Pick", "team games")
 Winner = namedtuple("Winner", "team games")
+Points = namedtuple("Points", "team games bonus")
 
+POINTS = [
+    Points(1, 2, 3),
+    Points(2, 3, 4),
+    Points(3, 4, 5),
+    Points(4, 5, 6)
+]
 
 DATA = {
     "Boston Bruins (A2)": Team("BOS", "000000", "https://allstarvotefilesde.blob.core.windows.net/nhl-team-logos/6.svg"),
@@ -60,8 +67,9 @@ def read_picks_round1(rows):
 
             pick = Pick(
                 team=DATA[team_name],
-                games=num_games
+                games=int(num_games)
             )
+
             tds.append(pick)
         trs[person] = tds
     return trs
@@ -74,28 +82,36 @@ def make_html(trs):
     s.append("</head>")
     s.append("<body>\n")
 
-    s.append("<div width=500px style=\"background-color: light-gray;\">\n<table style=\"padding: 5px\">\n")
+    s.append("<div width=500px style=\"background-color: light-gray;\">\n")
+    s.append("<table style=\"padding: 5px\">\n")
 
     sorted_persons = sorted(trs.keys())
     for person in sorted_persons:
+        points = 0
         picks = trs[person]
         s.append("<tr>")
         s.append(f"<td><b>{person}</b></td>")
+
         for (i, pick) in enumerate(picks):
+            winner = WINNERS[i]
+            points += get_points(POINTS[0], pick, winner)
+            team_class = get_team_class(pick, winner)
+            games_class = get_games_class(pick, winner)
+
             s.append(f"<td style=\"color: #FFFFFF; font-weight: bold; background-color: #{pick.team.colour};\">")
             s.append("<table class=\"pick\">")
             s.append("<tr>")
             s.append(f"<td><img src=\"{pick.team.img}\" height=50 width=50></img></td>")
-            team_class = get_team_class(pick, WINNERS[i])
             s.append(f"<td><span class=\"{team_class}\"></span></td>")
             s.append("</tr>")
             s.append("<tr>")
             s.append(f"<td>{pick.games}</td>")
-            games_class = get_games_class(pick, WINNERS[i])
             s.append(f"<td><span class=\"{games_class}\"></span></td>")
             s.append("</tr>")
             s.append("</table>")
             s.append("</td>")
+
+        s.append(f"<td><b>{points}</b></td>")
         s.append("</tr>\n")
 
     s.append("</table></div>")
@@ -104,7 +120,7 @@ def make_html(trs):
     return s
 
 
-def get_team_class(pick, winner):
+def get_team_class(pick: Pick, winner: Winner):
     if not winner:
         return ""
     if pick.team.short == winner.team:
@@ -112,12 +128,22 @@ def get_team_class(pick, winner):
     return "incorrect"
 
 
-def get_games_class(pick, winner):
+def get_games_class(pick: Pick, winner: Winner):
     if not winner:
         return ""
-    if int(pick.games) == winner.games:
+    if pick.games == winner.games:
         return "correct"
     return "incorrect"
+
+
+def get_points(scoring: Points, pick: Pick, winner: Winner) -> int:
+    if not winner:
+        return 0
+    points = 0
+    points += scoring.team if pick.team.short == winner.team else 0
+    points += scoring.games if pick.games == winner.games else 0
+    points += scoring.bonus if points == scoring.team + scoring.games else 0
+    return points
 
 
 def write_html(html, filename):
