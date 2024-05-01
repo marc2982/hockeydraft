@@ -1,0 +1,30 @@
+.pick td {
+    text-align: center;
+    vertical-align: middle;
+    color: white;
+}
+
+.correct:after {
+    content: '\2713';
+    width: 20px;
+    height: 20px;
+    text-align: center;
+    color: white;
+    border: 1px solid white;
+    background: green;
+    border-radius: 50%;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,.3)
+}
+
+
+.incorrect:after {
+    content: 'X';
+    width: 20px;
+    height: 20px;
+    text-align: center;
+    color: white;
+    border: 1px solid white;
+    background: red;
+    border-radius: 50%;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,.3)
+}
