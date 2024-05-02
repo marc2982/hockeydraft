@@ -1,7 +1,14 @@
+
 .pick td {
     text-align: center;
     vertical-align: middle;
     color: white;
+
+}
+
+.pick img {
+    height: 50px;
+    width: 50px;
 }
 
 .correct:after {
@@ -16,7 +23,6 @@
     box-shadow: inset 0 1px 3px rgba(0,0,0,.3)
 }
 
-
 .incorrect:after {
     content: 'X';
     width: 20px;
@@ -27,4 +33,10 @@
     background: red;
     border-radius: 50%;
     box-shadow: inset 0 1px 3px rgba(0,0,0,.3)
+}
+
+.unknown:after {
+    content: '\00a0';
+    width: 20px;
+    height: 20px;
 }

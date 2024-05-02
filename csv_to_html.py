@@ -2,12 +2,23 @@
 import csv
 import sys
 from collections import namedtuple
+from enum import Enum
+
+from airium import Airium
 
 
 Team = namedtuple("Team", "short colour img")
 Pick = namedtuple("Pick", "team games")
 Winner = namedtuple("Winner", "team games")
 Scoring = namedtuple("Scoring", "team games bonus")
+Row = namedtuple("Row", "person pick_results")
+PickResult = namedtuple("PickResult", "pick points possible_points team_status games_status")
+
+PickStatus = Enum("PickStatus", [
+    "CORRECT",
+    "INCORRECT",
+    "UNKNOWN"
+])
 
 SCORING = [
     Scoring(1, 2, 3),
@@ -75,78 +86,96 @@ def read_picks_round1(rows):
     return trs
 
 
-def make_html(trs):
-    s = ["<html>\n"]
-    s.append("<head>")
-    s.append("<link rel=\"stylesheet\" type=\"text/css\" href=\"csv_to_html.css\"/>")
-    s.append("</head>")
-    s.append("<body>\n")
+def build_data(scoring: Scoring, trs: map) -> list[Row]:
+    rows = []
 
-    s.append("<div width=500px style=\"background-color: light-gray;\">\n")
-    s.append("<table style=\"padding: 5px\">\n")
-
-    sorted_persons = sorted(trs.keys())
-    for person in sorted_persons:
-        points = 0
-        possible_points = 0
+    for person in trs.keys():
         picks = trs[person]
-        s.append("<tr>")
-        s.append(f"<td><b>{person}</b></td>")
+        pick_results = []
 
         for (i, pick) in enumerate(picks):
             winner = WINNERS[i]
             scoring = SCORING[0]  # TODO
-            points += get_points(scoring, pick, winner)
-            possible_points += calculate_possible_points(scoring, pick, winner)
-            team_class = get_team_class(pick, winner)
-            games_class = get_games_class(pick, winner)
+            points = get_points(scoring, pick, winner)
+            possible_points = calculate_possible_points(scoring, pick, winner)
+            team_status = get_team_status(pick, winner)
+            games_status = get_games_status(pick, winner)
+            pick_results.append(PickResult(pick, points, possible_points, team_status, games_status))
 
-            s.append(f"<td style=\"color: #FFFFFF; font-weight: bold; background-color: #{pick.team.colour};\">")
-            s.append("<table class=\"pick\">")
-            s.append("<tr>")
-            s.append(f"<td><img src=\"{pick.team.img}\" height=50 width=50></img></td>")
-            s.append(f"<td><span class=\"{team_class}\"></span></td>")
-            s.append("</tr>")
-            s.append("<tr>")
-            s.append(f"<td>{pick.games}</td>")
-            s.append(f"<td><span class=\"{games_class}\"></span></td>")
-            s.append("</tr>")
-            s.append("</table>")
-            s.append("</td>")
+        rows.append(Row(person, pick_results))
 
-        s.append(f"<td><b>{points}</b></td>")
-        s.append(f"<td><b>{possible_points}</b></td>")
-        s.append("</tr>\n")
-
-    s.append("</table></div>")
-    s.append("</body>")
-    s.append("</html>")
-    return s
+    return rows
 
 
-def get_team_class(pick: Pick, winner: Winner):
+def make_html(rows: list[Row]) -> str:
+    a = Airium()
+    a('<!DOCTYPE html>')
+    with a.html(lang="en"):
+        with a.head():
+            a.title(_t="Bryan Family Playoff Pool - Round 1")  # TODO
+            a.link(href='csv_to_html.css', rel='stylesheet')
+        with a.body():
+            with a.table(style="padding: 5px;"):
+                for row in sorted(rows, key=lambda x: x.person):
+                    total_points = 0
+                    possible_points = 0
+
+                    with a.tr():
+                        a.td(_t=row.person, style="font-weight: bold;")
+                        for result in row.pick_results:
+                            total_points += result.points
+                            possible_points += result.possible_points
+
+                            with a.td(style=f"background-color: #{result.pick.team.colour};"):
+                                with a.table(klass="pick"):
+                                    with a.tr():
+                                        with a.td():
+                                            a.img(src=result.pick.team.img, alt=result.pick.team.short)
+                                        with a.td():
+                                            a.span(klass=result.team_status.name.lower())
+                                    with a.tr():
+                                        a.td(_t=result.pick.games, style=f"color: #000000; font-weight: bold;")
+                                        with a.td():
+                                            a.span(klass=result.games_status.name.lower())
+                        a.td(_t=total_points)
+                        a.td(_t=possible_points)
+
+    return str(a)
+
+
+def get_pick_status(pick: Pick, winner: Winner, predicate: callable) -> PickStatus:
     if not winner:
-        return ""
-    if pick.team.short == winner.team:
-        return "correct"
-    return "incorrect"
+        return PickStatus.UNKNOWN
+    if predicate(pick, winner):
+        return PickStatus.CORRECT
+    return PickStatus.INCORRECT
 
 
-def get_games_class(pick: Pick, winner: Winner):
-    if not winner:
-        return ""
-    if pick.games == winner.games:
-        return "correct"
-    return "incorrect"
+def get_team_status(pick: Pick, winner: Winner) -> PickStatus:
+    return get_pick_status(
+        pick,
+        winner,
+        lambda p, w: p.team.short == w.team
+    )
+
+
+def get_games_status(pick: Pick, winner: Winner):
+    return get_pick_status(
+        pick,
+        winner,
+        lambda p, w: p.games == w.games
+    )
 
 
 def get_points(scoring: Scoring, pick: Pick, winner: Winner) -> int:
     if not winner:
         return 0
+    correct_team = pick.team.short == winner.team
+    correct_games = pick.games == winner.games
     points = 0
-    points += scoring.team if pick.team.short == winner.team else 0
-    points += scoring.games if pick.games == winner.games else 0
-    points += scoring.bonus if points == scoring.team + scoring.games else 0
+    points += scoring.team if correct_team else 0
+    points += scoring.games if correct_games else 0
+    points += scoring.bonus if correct_team and correct_games else 0
     return points
 
 
@@ -163,9 +192,11 @@ def write_html(html, filename):
 
 
 def main(argv):
+    round_scoring = SCORING[0]  # TODO
     rows = read_csv(argv[1])
     trs = read_picks_round1(rows)
-    html = make_html(trs)
+    rows = build_data(round_scoring, trs)
+    html = make_html(rows)
     write_html(html, "round1.html")
 
 
