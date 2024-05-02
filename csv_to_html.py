@@ -1,18 +1,14 @@
 #!/usr/bin/env python3
 import csv
+from datetime import datetime
 import sys
-from collections import namedtuple
 from enum import Enum
 
 from airium import Airium
 
+from common import Scoring, Winner, Pick, PickResult, Row
+from nhl_api_handler import NhlApiHandler
 
-Team = namedtuple("Team", "short colour img")
-Pick = namedtuple("Pick", "team games")
-Winner = namedtuple("Winner", "team games")
-Scoring = namedtuple("Scoring", "team games bonus")
-Row = namedtuple("Row", "person pick_results")
-PickResult = namedtuple("PickResult", "pick points possible_points team_status games_status")
 
 PickStatus = Enum("PickStatus", [
     "CORRECT",
@@ -27,36 +23,6 @@ SCORING = [
     Scoring(4, 5, 6)
 ]
 
-DATA = {
-    "Boston Bruins (A2)": Team("BOS", "000000", "https://allstarvotefilesde.blob.core.windows.net/nhl-team-logos/6.svg"),
-    "Carolina Hurricanes (M2)": Team("CAR", "CE1126", "https://allstarvotefilesde.blob.core.windows.net/nhl-team-logos/12.svg"),
-    "Colorado Avalanche (C3)": Team("COL", "6F263D", "https://allstarvotefilesde.blob.core.windows.net/nhl-team-logos/21.svg"),
-    "Dallas Stars (C1)": Team("DAL", "006847", "https://allstarvotefilesde.blob.core.windows.net/nhl-team-logos/25.svg"),
-    "Edmonton Oilers (P2)": Team("EDM", "FF4C00", "https://allstarvotefilesde.blob.core.windows.net/nhl-team-logos/22.svg"),
-    "Florida Panthers (A1)": Team("FLA", "C8102E", "https://allstarvotefilesde.blob.core.windows.net/nhl-team-logos/13.svg"),
-    "Los Angeles Kings (P3)": Team("LAK", "111111", "https://allstarvotefilesde.blob.core.windows.net/nhl-team-logos/26.svg"),
-    "Nashville Predators (WC1)": Team("NAS", "FFB81C", "https://allstarvotefilesde.blob.core.windows.net/nhl-team-logos/18.svg"),
-    "New York Islanders (M3)": Team("NYI", "F47D30", "https://allstarvotefilesde.blob.core.windows.net/nhl-team-logos/2.svg"),
-    "New York Rangers (M1)": Team("NYR", "0038A8", "https://allstarvotefilesde.blob.core.windows.net/nhl-team-logos/3.svg"),
-    "Tampa Bay Lightning (WC1)": Team("TBL", "002469", "https://allstarvotefilesde.blob.core.windows.net/nhl-team-logos/14.svg"),
-    "Toronto Maple Leafs (A3)": Team("TOR", "00205B", "https://allstarvotefilesde.blob.core.windows.net/nhl-team-logos/10.svg"),
-    "Vancouver Canucks (P1)": Team("VAN", "00843D", "https://allstarvotefilesde.blob.core.windows.net/nhl-team-logos/23.svg"),
-    "Vegas Golden Knights (WC2)": Team("VGK", "B4975A", "https://allstarvotefilesde.blob.core.windows.net/nhl-team-logos/54.svg"),
-    "Washington Capitals (WC2)": Team("WAS", "C8102E", "https://allstarvotefilesde.blob.core.windows.net/nhl-team-logos/15.svg"),
-    "Winnipeg Jets (C2)": Team("WSH", "55565A", "https://allstarvotefilesde.blob.core.windows.net/nhl-team-logos/52.svg")
-}
-
-WINNERS = [
-    None,
-    None,
-    Winner("FLA", 5),
-    None,
-    Winner("NYR", 4),
-    Winner("CAR", 5),
-    None,
-    Winner("COL", 5)
-]
-
 
 def read_csv(csv_filename):
     with open(csv_filename, 'r') as f:
@@ -65,41 +31,54 @@ def read_csv(csv_filename):
         return [row for row in reader]
 
 
-def read_picks_round1(rows):
+def read_picks_round1(rows: list[Row], nhl_api_handler: NhlApiHandler) -> dict[str, list[Pick]]:
+    # !!!2024 hack only!!!
+    # since the form doesnt follow the letter order that the api does, hardcode the order of the first round
+    if nhl_api_handler.year == 2024:  # TODO: round 1 only
+        series_order = ["G", "H", "A", "B", "C", "D", "E", "F"]
+    else:
+        series_order = ["A", "B", "C", "D", "E", "F", "G", "H"]
+
     trs = {}
     for row in rows:
         tds = []
         person = row[1]
         col_iter = iter(row[2:])
 
+        i = 0
         for col in col_iter:
             team_name = col
             num_games = next(col_iter)
 
             pick = Pick(
-                team=DATA[team_name],
+                series_letter=series_order[i],
+                team=nhl_api_handler.get_team(team_name),
                 games=int(num_games)
             )
 
             tds.append(pick)
+            i += 1
+
         trs[person] = tds
     return trs
 
 
-def build_data(scoring: Scoring, trs: map) -> list[Row]:
+def build_data(
+        scoring: Scoring,
+        nhl_api_handler: NhlApiHandler,
+        picks_by_person: dict[str, list[Pick]]
+        ) -> list[Row]:
     rows = []
 
-    for person in trs.keys():
-        picks = trs[person]
+    for person, picks in picks_by_person.items():
         pick_results = []
 
-        for (i, pick) in enumerate(picks):
-            winner = WINNERS[i]
-            scoring = SCORING[0]  # TODO
-            points = get_points(scoring, pick, winner)
-            possible_points = calculate_possible_points(scoring, pick, winner)
+        for pick in picks:
+            winner = nhl_api_handler.get_series(pick.series_letter).get_winner()
             team_status = get_team_status(pick, winner)
             games_status = get_games_status(pick, winner)
+            points = get_points(scoring, team_status, games_status)
+            possible_points = calculate_possible_points(scoring, winner, points)
             pick_results.append(PickResult(pick, points, possible_points, team_status, games_status))
 
         rows.append(Row(person, pick_results))
@@ -114,6 +93,7 @@ def make_html(rows: list[Row]) -> str:
         with a.head():
             a.title(_t="Bryan Family Playoff Pool - Round 1")  # TODO
             a.link(href='csv_to_html.css', rel='stylesheet')
+            a.link(href='teams.css', rel='stylesheet')
         with a.body():
             with a.table(style="padding: 5px;"):
                 for row in sorted(rows, key=lambda x: x.person):
@@ -126,20 +106,19 @@ def make_html(rows: list[Row]) -> str:
                             total_points += result.points
                             possible_points += result.possible_points
 
-                            with a.td(style=f"background-color: #{result.pick.team.colour};"):
+                            with a.td(klass=result.pick.team.short):
                                 with a.table(klass="pick"):
                                     with a.tr():
                                         with a.td():
-                                            a.img(src=result.pick.team.img, alt=result.pick.team.short)
-                                        with a.td():
+                                            a.img(src=result.pick.team.logo, alt=result.pick.team.short)
+                                        with a.td(klass="result"):
                                             a.span(klass=result.team_status.name.lower())
                                     with a.tr():
-                                        a.td(_t=result.pick.games, style=f"color: #000000; font-weight: bold;")
+                                        a.td(_t=result.pick.games, klass="games")
                                         with a.td():
                                             a.span(klass=result.games_status.name.lower())
                         a.td(_t=total_points)
                         a.td(_t=possible_points)
-
     return str(a)
 
 
@@ -155,11 +134,11 @@ def get_team_status(pick: Pick, winner: Winner) -> PickStatus:
     return get_pick_status(
         pick,
         winner,
-        lambda p, w: p.team.short == w.team
+        lambda p, w: p.team.short == w.team.short
     )
 
 
-def get_games_status(pick: Pick, winner: Winner):
+def get_games_status(pick: Pick, winner: Winner) -> PickStatus:
     return get_pick_status(
         pick,
         winner,
@@ -167,11 +146,11 @@ def get_games_status(pick: Pick, winner: Winner):
     )
 
 
-def get_points(scoring: Scoring, pick: Pick, winner: Winner) -> int:
-    if not winner:
+def get_points(scoring: Scoring, team_status: PickStatus, games_status: PickStatus) -> int:
+    if team_status == PickStatus.UNKNOWN or games_status == PickStatus.UNKNOWN:
         return 0
-    correct_team = pick.team.short == winner.team
-    correct_games = pick.games == winner.games
+    correct_team = team_status == PickStatus.CORRECT
+    correct_games = games_status == PickStatus.CORRECT
     points = 0
     points += scoring.team if correct_team else 0
     points += scoring.games if correct_games else 0
@@ -179,10 +158,11 @@ def get_points(scoring: Scoring, pick: Pick, winner: Winner) -> int:
     return points
 
 
-def calculate_possible_points(scoring: Scoring, pick: Pick, winner: Winner) -> int:
+def calculate_possible_points(scoring: Scoring, winner: Winner, current_points: int) -> int:
     if not winner:
         return scoring.team + scoring.games + scoring.bonus
-    return get_points(scoring, pick, winner)
+    # TODO: do more here now
+    return current_points
 
 
 def write_html(html, filename):
@@ -194,12 +174,16 @@ def write_html(html, filename):
 def main(argv):
     round_scoring = SCORING[0]  # TODO
     rows = read_csv(argv[1])
-    trs = read_picks_round1(rows)
-    rows = build_data(round_scoring, trs)
+
+    year = datetime.now().year  # TODO
+    nhl_api_handler = NhlApiHandler(year)
+    nhl_api_handler.load()
+
+    picks_by_person = read_picks_round1(rows, nhl_api_handler)
+    rows = build_data(round_scoring, nhl_api_handler, picks_by_person)
     html = make_html(rows)
     write_html(html, "round1.html")
 
 
 if __name__ == "__main__":
     main(sys.argv)
-
