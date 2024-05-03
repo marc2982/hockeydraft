@@ -31,6 +31,22 @@
     border: 3px solid white;
 }
 
+.cover-checkbox {
+    position: absolute;
+    right: 5px;
+    top: 3px;
+    z-index: 1;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--box-shadow);
+    border: 2px solid #fff;
+    transition: transform var(--transition),
+      opacity calc(var(--transition) * 1.2) linear;
+    opacity: 0;
+    transform: scale(0);
+  }
+
 .correctold:after {
     content: '\2713';
     text-align: center;

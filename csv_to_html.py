@@ -114,6 +114,9 @@ def make_html(rows: list[Row], nhl_api_handler: NhlApiHandler) -> str:
                                     with a.tr():
                                         with a.td(klass=f"{result.pick.team.short} {result.team_status.name.lower()}"):
                                             a.img(src=result.pick.team.logo, alt=result.pick.team.short)
+                                            with a.span(klass="cover-checkbox"):
+                                                with a.svg(viewBox="0 0 12 10"):
+                                                    a.polyline(points="1.5 6 4.5 9 10.5 1")
                                         with a.td(klass="result"):
                                             a.span(_t=result.pick.games, klass=f"games {result.games_status.name.lower()}")
                         a.td(_t=total_points)
