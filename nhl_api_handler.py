@@ -34,7 +34,7 @@ class NhlApiHandler:
                 bottom_seed_wins=series["bottomSeedWins"]
             ))
 
-    def _build_team(self, series: map, top_or_bottom: str) -> Team:
+    def _build_team(self, series: dict, top_or_bottom: str) -> Team:
         seed = series[f"{top_or_bottom}SeedTeam"]
         short = seed["abbrev"]
 
@@ -84,3 +84,11 @@ class NhlApiHandler:
             for series in self.series
             if series.letter == letter
         )
+
+    # !!!2024 hack only!!!
+    # since the form doesnt follow the letter order that the api does, hardcode the order of the first round of 2024
+    def get_series_order(self):
+        if self.year == 2024:  # TODO round 1 only
+            return ["G", "H", "A", "B", "C", "D", "E", "F"]
+        # TODO: handle more rounds
+        return ["A", "B", "C", "D", "E", "F", "G", "H"]

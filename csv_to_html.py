@@ -6,7 +6,7 @@ from enum import Enum
 
 from airium import Airium
 
-from common import Scoring, Winner, Pick, PickResult, Row
+from common import Scoring, Winner, Pick, PickResult, Row, Series
 from nhl_api_handler import NhlApiHandler
 
 
@@ -32,12 +32,7 @@ def read_csv(csv_filename):
 
 
 def read_picks_round1(rows: list[Row], nhl_api_handler: NhlApiHandler) -> dict[str, list[Pick]]:
-    # !!!2024 hack only!!!
-    # since the form doesnt follow the letter order that the api does, hardcode the order of the first round
-    if nhl_api_handler.year == 2024:  # TODO: round 1 only
-        series_order = ["G", "H", "A", "B", "C", "D", "E", "F"]
-    else:
-        series_order = ["A", "B", "C", "D", "E", "F", "G", "H"]
+    series_order = nhl_api_handler.get_series_order()
 
     trs = {}
     for row in rows:
@@ -74,11 +69,12 @@ def build_data(
         pick_results = []
 
         for pick in picks:
-            winner = nhl_api_handler.get_series(pick.series_letter).get_winner()
+            series = nhl_api_handler.get_series(pick.series_letter)
+            winner = series.get_winner()
             team_status = get_team_status(pick, winner)
             games_status = get_games_status(pick, winner)
             points = get_points(scoring, team_status, games_status)
-            possible_points = calculate_possible_points(scoring, winner, points)
+            possible_points = points if winner else calculate_possible_points(scoring, series, pick)
             pick_results.append(PickResult(pick, points, possible_points, team_status, games_status))
 
         rows.append(Row(person, pick_results))
@@ -86,7 +82,7 @@ def build_data(
     return rows
 
 
-def make_html(rows: list[Row]) -> str:
+def make_html(rows: list[Row], nhl_api_handler: NhlApiHandler) -> str:
     a = Airium()
     a('<!DOCTYPE html>')
     with a.html(lang="en"):
@@ -95,7 +91,14 @@ def make_html(rows: list[Row]) -> str:
             a.link(href='csv_to_html.css', rel='stylesheet')
             a.link(href='teams.css', rel='stylesheet')
         with a.body():
-            with a.table(style="padding: 5px;"):
+            with a.table(style="padding: 1px;"):
+                with a.tr():
+                    a.th(_t="Person")
+                    for series_letter in nhl_api_handler.get_series_order():
+                        series = nhl_api_handler.get_series(series_letter)  # TODO move to nhlapihandler?
+                        a.th(_t=series.get_series_summary())
+                    a.th(_t="Points")
+                    a.th(_t="Possible Points")
                 for row in sorted(rows, key=lambda x: x.person):
                     total_points = 0
                     possible_points = 0
@@ -106,17 +109,13 @@ def make_html(rows: list[Row]) -> str:
                             total_points += result.points
                             possible_points += result.possible_points
 
-                            with a.td(klass=result.pick.team.short):
+                            with a.td():
                                 with a.table(klass="pick"):
                                     with a.tr():
-                                        with a.td():
+                                        with a.td(klass=f"{result.pick.team.short} {result.team_status.name.lower()}"):
                                             a.img(src=result.pick.team.logo, alt=result.pick.team.short)
                                         with a.td(klass="result"):
-                                            a.span(klass=result.team_status.name.lower())
-                                    with a.tr():
-                                        a.td(_t=result.pick.games, klass="games")
-                                        with a.td():
-                                            a.span(klass=result.games_status.name.lower())
+                                            a.span(_t=result.pick.games, klass=f"games {result.games_status.name.lower()}")
                         a.td(_t=total_points)
                         a.td(_t=possible_points)
     return str(a)
@@ -158,11 +157,12 @@ def get_points(scoring: Scoring, team_status: PickStatus, games_status: PickStat
     return points
 
 
-def calculate_possible_points(scoring: Scoring, winner: Winner, current_points: int) -> int:
-    if not winner:
-        return scoring.team + scoring.games + scoring.bonus
-    # TODO: do more here now
-    return current_points
+# this function should ONLY be called when there is no winner
+def calculate_possible_points(scoring: Scoring, series: Series, pick: Pick) -> int:
+    possible_from_team = scoring.team
+    possible_from_games = scoring.games if pick.games > series.total_games() else 0
+    possible_from_bonus = scoring.bonus if possible_from_games > 0 else 0
+    return possible_from_team + possible_from_games + possible_from_bonus
 
 
 def write_html(html, filename):
@@ -181,7 +181,7 @@ def main(argv):
 
     picks_by_person = read_picks_round1(rows, nhl_api_handler)
     rows = build_data(round_scoring, nhl_api_handler, picks_by_person)
-    html = make_html(rows)
+    html = make_html(rows, nhl_api_handler)
     write_html(html, "round1.html")
 
 

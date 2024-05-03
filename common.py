@@ -33,3 +33,6 @@ class Series:
         if self.bottom_seed_wins == 4:
             return Winner(self.bottom_seed, self.total_games())
         return None
+
+    def get_series_summary(self):
+        return f"{self.top_seed.short} {self.top_seed_wins} - {self.bottom_seed.short} {self.bottom_seed_wins}"
