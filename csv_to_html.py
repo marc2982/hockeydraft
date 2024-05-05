@@ -67,17 +67,24 @@ def build_data(
 
     for person, picks in picks_by_person.items():
         pick_results = []
+        total_points = 0
+        total_possible_points = 0
 
         for pick in picks:
             series = nhl_api_handler.get_series(pick.series_letter)
             winner = series.get_winner()
             team_status = get_team_status(pick, winner)
             games_status = get_games_status(pick, winner, series.total_games())
+
             points = get_points(scoring, team_status, games_status)
+            total_points += points
+
             possible_points = points if winner else calculate_possible_points(scoring, series, pick)
+            total_possible_points += possible_points
+
             pick_results.append(PickResult(pick, points, possible_points, team_status, games_status))
 
-        rows.append(Row(person, pick_results))
+        rows.append(Row(person, pick_results, total_points, total_possible_points))
 
     return rows
 
@@ -88,8 +95,8 @@ def make_html(rows: list[Row], nhl_api_handler: NhlApiHandler) -> str:
     with a.html(lang="en"):
         with a.head():
             a.title(_t="Bryan Family Playoff Pool - Round 1")  # TODO
-            a.link(href='csv_to_html.css', rel='stylesheet')
-            a.link(href='teams.css', rel='stylesheet')
+            a.link(href='css/csv_to_html.css', rel='stylesheet')
+            a.link(href='css/teams.css', rel='stylesheet')
         with a.body():
             with a.table(klass="containing_table"):
                 with a.tr():
@@ -98,18 +105,17 @@ def make_html(rows: list[Row], nhl_api_handler: NhlApiHandler) -> str:
                         series = nhl_api_handler.get_series(series_letter)  # TODO move to nhlapihandler?
                         a.th(_t=series.get_series_summary_html())
                     a.th(_t="Points")
+                    a.th(_t="Rank")
                     a.th(_t="Possible Points")
+
                 row_count = 0
+                all_points = list(map(lambda r: r.total_points, rows))
                 for row in sorted(rows, key=lambda x: x.person):
-                    total_points = 0
-                    possible_points = 0
-
+                    rank = excel_rank(all_points, row.total_points)
+                    leader_class = " leader" if rank == 1 else ""
                     with a.tr():
-                        a.td(_t=row.person, klass="person")
+                        a.td(_t=row.person, klass="person" + leader_class)
                         for result in row.pick_results:
-                            total_points += result.points
-                            possible_points += result.possible_points
-
                             with a.td():
                                 with a.table(klass="pick"):
                                     with a.tr():
@@ -118,10 +124,19 @@ def make_html(rows: list[Row], nhl_api_handler: NhlApiHandler) -> str:
                                                 a.img(src=result.pick.team.logo, alt=result.pick.team.short)
                                         with a.td(klass=result.games_status.name.lower()):
                                             a.span(_t=result.pick.games, klass="games")
-                        a.td(_t=total_points, klass="points")
-                        a.td(_t=possible_points, klass="possible_points")
+                        a.td(_t=row.total_points, klass="points" + leader_class)
+                        a.td(_t=rank, klass="rank" + leader_class)
+                        a.td(_t=row.possible_points, klass="possible_points")
                     row_count += 1
     return str(a)
+
+
+def excel_rank(values, target):
+    sorted_values = sorted(values, reverse=True)
+    try:
+        return sorted_values.index(target) + 1
+    except ValueError:
+        return None
 
 
 def get_pick_status(pick: Pick, winner: Winner, predicate: callable) -> PickStatus:
@@ -157,8 +172,6 @@ def get_games_status(pick: Pick, winner: Winner, games_played: int) -> PickStatu
 
 
 def get_points(scoring: Scoring, team_status: PickStatus, games_status: PickStatus) -> int:
-    if team_status == PickStatus.UNKNOWN or games_status == PickStatus.UNKNOWN:
-        return 0
     correct_team = team_status == PickStatus.CORRECT
     correct_games = games_status == PickStatus.CORRECT
     points = 0
