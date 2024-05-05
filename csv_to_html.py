@@ -72,7 +72,7 @@ def build_data(
             series = nhl_api_handler.get_series(pick.series_letter)
             winner = series.get_winner()
             team_status = get_team_status(pick, winner)
-            games_status = get_games_status(pick, winner)
+            games_status = get_games_status(pick, winner, series.total_games())
             points = get_points(scoring, team_status, games_status)
             possible_points = points if winner else calculate_possible_points(scoring, series, pick)
             pick_results.append(PickResult(pick, points, possible_points, team_status, games_status))
@@ -91,20 +91,21 @@ def make_html(rows: list[Row], nhl_api_handler: NhlApiHandler) -> str:
             a.link(href='csv_to_html.css', rel='stylesheet')
             a.link(href='teams.css', rel='stylesheet')
         with a.body():
-            with a.table(style="padding: 1px;"):
+            with a.table(klass="containing_table"):
                 with a.tr():
                     a.th(_t="Person")
                     for series_letter in nhl_api_handler.get_series_order():
                         series = nhl_api_handler.get_series(series_letter)  # TODO move to nhlapihandler?
-                        a.th(_t=series.get_series_summary())
+                        a.th(_t=series.get_series_summary_html())
                     a.th(_t="Points")
                     a.th(_t="Possible Points")
+                row_count = 0
                 for row in sorted(rows, key=lambda x: x.person):
                     total_points = 0
                     possible_points = 0
 
                     with a.tr():
-                        a.td(_t=row.person, style="font-weight: bold;")
+                        a.td(_t=row.person, klass="person")
                         for result in row.pick_results:
                             total_points += result.points
                             possible_points += result.possible_points
@@ -112,15 +113,14 @@ def make_html(rows: list[Row], nhl_api_handler: NhlApiHandler) -> str:
                             with a.td():
                                 with a.table(klass="pick"):
                                     with a.tr():
-                                        with a.td(klass=f"{result.pick.team.short} {result.team_status.name.lower()}"):
-                                            a.img(src=result.pick.team.logo, alt=result.pick.team.short)
-                                            with a.span(klass="cover-checkbox"):
-                                                with a.svg(viewBox="0 0 12 10"):
-                                                    a.polyline(points="1.5 6 4.5 9 10.5 1")
-                                        with a.td(klass="result"):
-                                            a.span(_t=result.pick.games, klass=f"games {result.games_status.name.lower()}")
-                        a.td(_t=total_points)
-                        a.td(_t=possible_points)
+                                        with a.td(klass=result.team_status.name.lower()):
+                                            with a.div(klass="img_container"):
+                                                a.img(src=result.pick.team.logo, alt=result.pick.team.short)
+                                        with a.td(klass=result.games_status.name.lower()):
+                                            a.span(_t=result.pick.games, klass="games")
+                        a.td(_t=total_points, klass="points")
+                        a.td(_t=possible_points, klass="possible_points")
+                    row_count += 1
     return str(a)
 
 
@@ -140,7 +140,15 @@ def get_team_status(pick: Pick, winner: Winner) -> PickStatus:
     )
 
 
-def get_games_status(pick: Pick, winner: Winner) -> PickStatus:
+def get_games_status(pick: Pick, winner: Winner, games_played: int) -> PickStatus:
+    # sometimes we can assign correctness early
+    if winner is None:
+        # since we know the 7th game will be the last we can give points early
+        if games_played == 6 and pick.games == 7:
+            return PickStatus.CORRECT
+        # if >= games than the guess have been played, it's a bad guess
+        if games_played >= pick.games:
+            return PickStatus.INCORRECT
     return get_pick_status(
         pick,
         winner,
