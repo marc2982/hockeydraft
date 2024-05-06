@@ -224,7 +224,7 @@ def main(argv):
         all_rows.append(round_rows)
 
     html = make_html(all_rows, nhl_api_handler)
-    write_html(html, "round1.html")
+    write_html(html, f"{year}.html")
 
 
 if __name__ == "__main__":
