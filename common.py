@@ -49,12 +49,11 @@ class Series:
             return Winner(self.bottom_seed, self.total_games())
         return None
 
-    def get_series_summary(self):
-        return f"{self.top_seed.short} {self.top_seed_wins} - {self.bottom_seed.short} {self.bottom_seed_wins}"
+    def get_top_seed_short(self) -> str:
+        return f"{self.top_seed.short} {self.top_seed_wins}"
 
-    def get_series_summary_html(self):
-        winning_seed_class = "winning_seed"
-        top_seed_class = winning_seed_class if self.is_top_seed_winner() else ""
-        bottom_seed_class = winning_seed_class if self.is_bottom_seed_winner() else ""
-        return (f"<span class=\"{top_seed_class}\">{self.top_seed.short} {self.top_seed_wins}</span> -<br />"
-                f"<span class=\"{bottom_seed_class}\">{self.bottom_seed.short} {self.bottom_seed_wins}")
+    def get_bottom_seed_short(self) -> str:
+        return f"{self.bottom_seed.short} {self.bottom_seed_wins}"
+
+    def get_series_summary(self) -> str:
+        return f"{self.get_top_seed_short()} - {self.get_bottom_seed_short()}"

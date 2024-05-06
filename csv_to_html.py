@@ -97,13 +97,25 @@ def make_html(rows: list[Row], nhl_api_handler: NhlApiHandler) -> str:
             a.title(_t="Bryan Family Playoff Pool - Round 1")  # TODO
             a.link(href='css/csv_to_html.css', rel='stylesheet')
             a.link(href='css/teams.css', rel='stylesheet')
+            a.link(href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css', rel="stylesheet", crossorigin="anonymous")
+            a.link(href="https://cdn.datatables.net/v/dt/dt-2.0.6/datatables.min.css", rel="stylesheet")
+            a.script(src="https://code.jquery.com/jquery-3.7.1.min.js")
+            a.script(src="https://cdn.datatables.net/v/dt/dt-2.0.6/datatables.min.js")
+            a.script(src="js/csv_to_html.js")
         with a.body():
-            with a.table(klass="containing_table"):
+            with a.table(klass="table table-striped containing_table table-hover", id="theTable"):
                 with a.tr():
-                    a.th(_t="Person")
+                    a.th(_t="")
                     for series_letter in nhl_api_handler.get_series_order():
                         series = nhl_api_handler.get_series(series_letter)  # TODO move to nhlapihandler?
-                        a.th(_t=series.get_series_summary_html())
+
+                        winning_seed_class = "winning_seed"
+                        top_seed_class = winning_seed_class if series.is_top_seed_winner() else ""
+                        bottom_seed_class = winning_seed_class if series.is_bottom_seed_winner() else ""
+                        with a.th():
+                            a.span(_t=series.get_top_seed_short(), klass=top_seed_class)
+                            a.br()
+                            a.span(_t=series.get_bottom_seed_short(), klass=bottom_seed_class)
                     a.th(_t="Points")
                     a.th(_t="Rank")
                     a.th(_t="Possible Points")
@@ -117,13 +129,10 @@ def make_html(rows: list[Row], nhl_api_handler: NhlApiHandler) -> str:
                         a.td(_t=row.person, klass="person" + leader_class)
                         for result in row.pick_results:
                             with a.td():
-                                with a.table(klass="pick"):
-                                    with a.tr():
-                                        with a.td(klass=result.team_status.name.lower()):
-                                            with a.div(klass="img_container"):
-                                                a.img(src=result.pick.team.logo, alt=result.pick.team.short)
-                                        with a.td(klass=result.games_status.name.lower()):
-                                            a.span(_t=result.pick.games, klass="games")
+                                with a.div(klass="pick"):
+                                    with a.div(klass=f"img_container {result.team_status.name.lower()}"):
+                                        a.img(src=result.pick.team.logo, alt=result.pick.team.short)
+                                    a.div(_t=result.pick.games, klass=f"games {result.games_status.name.lower()}")
                         a.td(_t=row.total_points, klass="points" + leader_class)
                         a.td(_t=rank, klass="rank" + leader_class)
                         a.td(_t=row.possible_points, klass="possible_points")
