@@ -31,8 +31,8 @@ def read_csv(csv_filename):
         return [row for row in reader]
 
 
-def read_picks_round1(rows: list[Row], nhl_api_handler: NhlApiHandler) -> dict[str, list[Pick]]:
-    series_order = nhl_api_handler.get_series_order()
+def read_picks(rows: list[Row], nhl_api_handler: NhlApiHandler, round: int) -> dict[str, list[Pick]]:
+    series_order = nhl_api_handler.get_series_order(round)
 
     trs = {}
     for row in rows:
@@ -89,7 +89,7 @@ def build_data(
     return rows
 
 
-def make_html(rows: list[Row], nhl_api_handler: NhlApiHandler) -> str:
+def make_html(all_rows: list[list[Row]], nhl_api_handler: NhlApiHandler) -> str:
     a = Airium()
     a('<!DOCTYPE html>')
     with a.html(lang="en"):
@@ -103,41 +103,46 @@ def make_html(rows: list[Row], nhl_api_handler: NhlApiHandler) -> str:
             a.script(src="https://cdn.datatables.net/v/dt/dt-2.0.6/datatables.min.js")
             a.script(src="js/csv_to_html.js")
         with a.body():
-            with a.table(klass="table table-striped containing_table table-hover", id="theTable"):
-                with a.tr():
-                    a.th(_t="")
-                    for series_letter in nhl_api_handler.get_series_order():
-                        series = nhl_api_handler.get_series(series_letter)  # TODO move to nhlapihandler?
-
-                        winning_seed_class = "winning_seed"
-                        top_seed_class = winning_seed_class if series.is_top_seed_winner() else ""
-                        bottom_seed_class = winning_seed_class if series.is_bottom_seed_winner() else ""
-                        with a.th():
-                            a.span(_t=series.get_top_seed_short(), klass=top_seed_class)
-                            a.br()
-                            a.span(_t=series.get_bottom_seed_short(), klass=bottom_seed_class)
-                    a.th(_t="Points")
-                    a.th(_t="Rank")
-                    a.th(_t="Possible Points")
-
-                row_count = 0
-                all_points = list(map(lambda r: r.total_points, rows))
-                for row in sorted(rows, key=lambda x: x.person):
-                    rank = excel_rank(all_points, row.total_points)
-                    leader_class = " leader" if rank == 1 else ""
-                    with a.tr():
-                        a.td(_t=row.person, klass="person" + leader_class)
-                        for result in row.pick_results:
-                            with a.td():
-                                with a.div(klass="pick"):
-                                    with a.div(klass=f"img_container {result.team_status.name.lower()}"):
-                                        a.img(src=result.pick.team.logo, alt=result.pick.team.short)
-                                    a.div(_t=result.pick.games, klass=f"games {result.games_status.name.lower()}")
-                        a.td(_t=row.total_points, klass="points" + leader_class)
-                        a.td(_t=rank, klass="rank" + leader_class)
-                        a.td(_t=row.possible_points, klass="possible_points")
-                    row_count += 1
+            for i, rows in enumerate(all_rows):
+                display_table(a, i+1, rows, nhl_api_handler)
     return str(a)
+
+
+def display_table(a: Airium, round: int, rows: list[Row], nhl_api_handler: NhlApiHandler):
+    round_str = f"round{round}"
+    with a.div(id=round_str):
+        a.h2(_t=f"Round {round}")
+        with a.table(klass="table table-striped containing_table table-hover", id=f"{round_str}Table"):
+            with a.tr():
+                a.th(_t="")
+                for series_letter in nhl_api_handler.get_series_order(round):
+                    series = nhl_api_handler.get_series(series_letter)  # TODO move to nhlapihandler?
+
+                    winning_seed_class = "winning_seed"
+                    top_seed_class = winning_seed_class if series.is_top_seed_winner() else ""
+                    bottom_seed_class = winning_seed_class if series.is_bottom_seed_winner() else ""
+                    with a.th():
+                        a.span(_t=series.get_top_seed_short(), klass=top_seed_class)
+                        a.br()
+                        a.span(_t=series.get_bottom_seed_short(), klass=bottom_seed_class)
+                a.th(_t="Points")
+                a.th(_t="Rank")
+                a.th(_t="Possible Points")
+            all_points = list(map(lambda r: r.total_points, rows))
+            for row in sorted(rows, key=lambda x: x.person):
+                rank = excel_rank(all_points, row.total_points)
+                leader_class = " leader" if rank == 1 and row.total_points > 0 else ""
+                with a.tr():
+                    a.td(_t=row.person, klass="person" + leader_class)
+                    for result in row.pick_results:
+                        with a.td():
+                            with a.div(klass="pick"):
+                                with a.div(klass=f"img_container {result.team_status.name.lower()}"):
+                                    a.img(src=result.pick.team.logo, alt=result.pick.team.short)
+                                a.div(_t=result.pick.games, klass=f"games {result.games_status.name.lower()}")
+                    a.td(_t=row.total_points, klass="points" + leader_class)
+                    a.td(_t=rank, klass="rank" + leader_class)
+                    a.td(_t=row.possible_points, klass="possible_points")
 
 
 def excel_rank(values, target):
@@ -205,16 +210,20 @@ def write_html(html, filename):
 
 
 def main(argv):
-    round_scoring = SCORING[0]  # TODO
-    rows = read_csv(argv[1])
-
-    year = datetime.now().year  # TODO
+    year = datetime.now().year  # TODO: add support for older years
     nhl_api_handler = NhlApiHandler(year)
     nhl_api_handler.load()
 
-    picks_by_person = read_picks_round1(rows, nhl_api_handler)
-    rows = build_data(round_scoring, nhl_api_handler, picks_by_person)
-    html = make_html(rows, nhl_api_handler)
+    all_rows = []
+    for i in range(len(argv) - 1):
+        round = i + 1
+        round_scoring = SCORING[i]
+        csv_rows = read_csv(argv[i+1])
+        picks_by_person = read_picks(csv_rows, nhl_api_handler, round)
+        round_rows = build_data(round_scoring, nhl_api_handler, picks_by_person)
+        all_rows.append(round_rows)
+
+    html = make_html(all_rows, nhl_api_handler)
     write_html(html, "round1.html")
 
 

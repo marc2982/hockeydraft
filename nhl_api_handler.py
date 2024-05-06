@@ -76,6 +76,7 @@ class NhlApiHandler:
             team
             for team in self.teams.values()
             if f"{team.name} ({team.rank})" == team_pick_str
+            or team.name == team_pick_str
         )
 
     def get_series(self, letter: str) -> Series:
@@ -85,10 +86,16 @@ class NhlApiHandler:
             if series.letter == letter
         )
 
-    # !!!2024 hack only!!!
-    # since the form doesnt follow the letter order that the api does, hardcode the order of the first round of 2024
-    def get_series_order(self):
-        if self.year == 2024:  # TODO round 1 only
-            return ["G", "H", "A", "B", "C", "D", "E", "F"]
-        # TODO: handle more rounds
-        return ["A", "B", "C", "D", "E", "F", "G", "H"]
+    def get_series_order(self, round: int) -> list[str]:
+        if round == 1:
+            # !!!2024 hack only!!!
+            # since the form doesnt follow the letter order that the api does, hardcode the order of the first round of 2024
+            if self.year == 2024:
+                return ["G", "H", "A", "B", "C", "D", "E", "F"]
+            return ["A", "B", "C", "D", "E", "F", "G", "H"]
+        elif round == 2:
+            return ["I", "J", "K", "L"]
+        elif round == 3:
+            return []
+        elif round == 4:
+            return []
