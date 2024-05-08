@@ -89,7 +89,7 @@ def build_data(
     return rows
 
 
-def make_html(all_rows: list[list[Row]], nhl_api_handler: NhlApiHandler) -> str:
+def make_html(all_rows: list[list[Row]], nhl_api_handler: NhlApiHandler, scoring: Scoring) -> str:
     a = Airium()
     a('<!DOCTYPE html>')
     with a.html(lang="en"):
@@ -105,7 +105,7 @@ def make_html(all_rows: list[list[Row]], nhl_api_handler: NhlApiHandler) -> str:
         with a.body():
             display_summary_table(a, all_rows)
             for i, rows in enumerate(all_rows):
-                display_table(a, i+1, rows, nhl_api_handler)
+                display_table(a, i+1, rows, nhl_api_handler, scoring[i])
     return str(a)
 
 
@@ -160,10 +160,14 @@ def to_str(num: int) -> str:
     return "0" if num == 0 else str(num)
 
 
-def display_table(a: Airium, round: int, rows: list[Row], nhl_api_handler: NhlApiHandler):
+def display_table(a: Airium, round: int, rows: list[Row], nhl_api_handler: NhlApiHandler, scoring: Scoring):
     round_str = f"round{round}"
     with a.div(id=round_str):
         a.h2(_t=f"Round {round}")
+        with a.ul():
+            a.li(_t=f"Correct team: {scoring[0]} point(s)")
+            a.li(_t=f"Correct games: {scoring[1]} point(s)")
+            a.li(_t=f"Both correct: {scoring[2]} bonus point(s)")
         with a.table(klass="table table-striped containing_table table-hover", id=f"{round_str}Table"):
             with a.tr():
                 a.th(_t="")
@@ -274,7 +278,7 @@ def main(argv):
         round_rows = build_data(round_scoring, nhl_api_handler, picks_by_person)
         all_rows.append(round_rows)
 
-    html = make_html(all_rows, nhl_api_handler)
+    html = make_html(all_rows, nhl_api_handler, SCORING)
     write_html(html, f"{year}.html")
 
 
