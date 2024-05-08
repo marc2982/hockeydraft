@@ -6,7 +6,7 @@ from enum import Enum
 
 from airium import Airium
 
-from common import Scoring, Winner, Pick, PickResult, Row, Series
+from common import Scoring, Winner, Pick, PickResult, Row, Series, SummaryRow
 from nhl_api_handler import NhlApiHandler
 
 
@@ -103,9 +103,61 @@ def make_html(all_rows: list[list[Row]], nhl_api_handler: NhlApiHandler) -> str:
             a.script(src="https://cdn.datatables.net/v/dt/dt-2.0.6/datatables.min.js")
             a.script(src="js/csv_to_html.js")
         with a.body():
+            display_summary_table(a, all_rows)
             for i, rows in enumerate(all_rows):
                 display_table(a, i+1, rows, nhl_api_handler)
     return str(a)
+
+
+def display_summary_table(a: Airium, all_rows: list[list[Row]]):
+    # if not all 4 rounds have happened yet, put in 0s
+    while len(all_rows) < 4:
+        rows = []
+        for row in all_rows[0]:
+            rows.append(
+                Row(row.person, [], 0, 0)
+            )
+        all_rows.append(rows)
+    # arrange by person and calculate scores
+    scores: dict[str, SummaryRow] = {}
+    for rows in all_rows:
+        for row in rows:
+            summary_row = scores.get(row.person, SummaryRow(row.person, [], 0, 0))
+            scores[row.person] = SummaryRow(
+                row.person,
+                summary_row.round_totals + [row.total_points],
+                summary_row.total_points + row.total_points,
+                summary_row.possible_points + row.possible_points
+            )
+    # render table
+    with a.div(id="summary"):
+        with a.table(klass="table table-striped containing_table table-hover", id="summaryTable"):
+            with a.tr():
+                a.th(_t="")
+                a.th(_t="Round 1")
+                a.th(_t="Round 2")
+                a.th(_t="Round 3")
+                a.th(_t="Round 4")
+                a.th(_t="Total Points")
+                a.th(_t="Rank")
+                a.th(_t="Total Possible Points")
+            # TODO: precalc rank
+            all_points = list(map(lambda r: r.total_points, scores.values()))
+            for summary_row in sorted(scores.values(), key=lambda s: (s.total_points, s.person), reverse=True):
+                rank = excel_rank(all_points, summary_row.total_points)
+                leader_class = " leader" if rank == 1 and summary_row.total_points > 0 else ""
+                with a.tr(klass=leader_class):
+                    a.td(_t=summary_row.person, klass="person")
+                    for round in summary_row.round_totals:
+                        a.td(_t=to_str(round), klass="round_total")
+                    a.td(_t=to_str(summary_row.total_points), klass="points")
+                    a.td(_t=rank, klass="rank")
+                    a.td(_t=to_str(summary_row.possible_points), klass="possible_points")
+
+
+# hack necessary because airium considers 0 == None and doesnt display it
+def to_str(num: int) -> str:
+    return "0" if num == 0 else str(num)
 
 
 def display_table(a: Airium, round: int, rows: list[Row], nhl_api_handler: NhlApiHandler):
@@ -117,7 +169,6 @@ def display_table(a: Airium, round: int, rows: list[Row], nhl_api_handler: NhlAp
                 a.th(_t="")
                 for series_letter in nhl_api_handler.get_series_order(round):
                     series = nhl_api_handler.get_series(series_letter)  # TODO move to nhlapihandler?
-
                     winning_seed_class = "winning_seed"
                     top_seed_class = winning_seed_class if series.is_top_seed_winner() else ""
                     bottom_seed_class = winning_seed_class if series.is_bottom_seed_winner() else ""
@@ -140,9 +191,9 @@ def display_table(a: Airium, round: int, rows: list[Row], nhl_api_handler: NhlAp
                                 with a.div(klass=f"img_container {result.team_status.name.lower()}"):
                                     a.img(src=result.pick.team.logo, alt=result.pick.team.short)
                                 a.div(_t=result.pick.games, klass=f"games {result.games_status.name.lower()}")
-                    a.td(_t=row.total_points, klass="points" + leader_class)
+                    a.td(_t=to_str(row.total_points), klass="points" + leader_class)
                     a.td(_t=rank, klass="rank" + leader_class)
-                    a.td(_t=row.possible_points, klass="possible_points")
+                    a.td(_t=to_str(row.possible_points), klass="possible_points")
 
 
 def excel_rank(values, target):
