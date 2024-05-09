@@ -1,14 +1,32 @@
 #!/usr/bin/env python3
 import csv
-from datetime import datetime
+import os
 import sys
 from enum import Enum
 
 from airium import Airium
 
-from common import Scoring, Winner, Pick, PickResult, Row, Series, SummaryRow
+from common import Scoring, Winner, Pick, PickResult, Row, SummaryRow
+from series import Series, ALL_SERIES
 from nhl_api_handler import NhlApiHandler
 
+PEOPLE = [
+    'Benedict',
+    'Derrick',
+    'Glenda',
+    'Jaclyn',
+    'Jake',
+    'Jamie',
+    'Kiersten',
+    'Marc',
+    'Nathan',
+    'Nickall',
+    'Robin',
+    'Ryan',
+    'Sophie',
+    'Stephanie',
+    'Theodore'
+]
 
 PickStatus = Enum("PickStatus", [
     "CORRECT",
@@ -31,8 +49,12 @@ def read_csv(csv_filename):
         return [row for row in reader]
 
 
-def read_picks(rows: list[Row], nhl_api_handler: NhlApiHandler, round: int) -> dict[str, list[Pick]]:
-    series_order = nhl_api_handler.get_series_order(round)
+def read_picks(
+        rows: list[Row],
+        nhl_api_handler: NhlApiHandler,
+        round: int
+        ) -> dict[str, list[Pick]]:
+    series_order = list(nhl_api_handler.series_iter(round))
 
     trs = {}
     for row in rows:
@@ -46,7 +68,7 @@ def read_picks(rows: list[Row], nhl_api_handler: NhlApiHandler, round: int) -> d
             num_games = next(col_iter)
 
             pick = Pick(
-                series_letter=series_order[i],
+                series_letter=series_order[i].letter,
                 team=nhl_api_handler.get_team(team_name),
                 games=int(num_games)
             )
@@ -72,6 +94,7 @@ def build_data(
 
         for pick in picks:
             series = nhl_api_handler.get_series(pick.series_letter)
+
             winner = series.get_winner()
             team_status = get_team_status(pick, winner)
             games_status = get_games_status(pick, winner, series.total_games())
@@ -95,13 +118,15 @@ def make_html(all_rows: list[list[Row]], nhl_api_handler: NhlApiHandler, scoring
     with a.html(lang="en"):
         with a.head():
             a.title(_t="Bryan Family Playoff Pool - Round 1")  # TODO
-            a.link(href='css/csv_to_html.css', rel='stylesheet')
-            a.link(href='css/teams.css', rel='stylesheet')
-            a.link(href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css', rel="stylesheet", crossorigin="anonymous")
+            a.link(href='../css/csv_to_html.css', rel='stylesheet')
+            a.link(href='../css/teams.css', rel='stylesheet')
+            a.link(
+                href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css',
+                rel="stylesheet",
+                crossorigin="anonymous"
+            )
             a.link(href="https://cdn.datatables.net/v/dt/dt-2.0.6/datatables.min.css", rel="stylesheet")
             a.script(src="https://code.jquery.com/jquery-3.7.1.min.js")
-            a.script(src="https://cdn.datatables.net/v/dt/dt-2.0.6/datatables.min.js")
-            a.script(src="js/csv_to_html.js")
         with a.body():
             display_summary_table(a, all_rows)
             for i, rows in enumerate(all_rows):
@@ -171,12 +196,13 @@ def display_table(a: Airium, round: int, rows: list[Row], nhl_api_handler: NhlAp
         with a.table(klass="table table-striped containing_table table-hover", id=f"{round_str}Table"):
             with a.tr():
                 a.th(_t="")
-                for series_letter in nhl_api_handler.get_series_order(round):
-                    series = nhl_api_handler.get_series(series_letter)  # TODO move to nhlapihandler?
+                for series in nhl_api_handler.series_iter(round):
                     winning_seed_class = "winning_seed"
                     top_seed_class = winning_seed_class if series.is_top_seed_winner() else ""
                     bottom_seed_class = winning_seed_class if series.is_bottom_seed_winner() else ""
                     with a.th():
+                        a.span(_t=f"Series {series.letter}:")
+                        a.br()
                         a.span(_t=series.get_top_seed_short(), klass=top_seed_class)
                         a.br()
                         a.span(_t=series.get_bottom_seed_short(), klass=bottom_seed_class)
@@ -193,8 +219,9 @@ def display_table(a: Airium, round: int, rows: list[Row], nhl_api_handler: NhlAp
                         with a.td():
                             with a.div(klass="pick"):
                                 with a.div(klass=f"img_container {result.team_status.name.lower()}"):
-                                    a.img(src=result.pick.team.logo, alt=result.pick.team.short)
-                                a.div(_t=result.pick.games, klass=f"games {result.games_status.name.lower()}")
+                                    if result.pick:
+                                        a.img(src=result.pick.team.logo, alt=result.pick.team.short)
+                                a.div(_t=result.pick.games if result.pick else "", klass=f"games {result.games_status.name.lower()}")
                     a.td(_t=to_str(row.total_points), klass="points" + leader_class)
                     a.td(_t=rank, klass="rank" + leader_class)
                     a.td(_t=to_str(row.possible_points), klass="possible_points")
@@ -264,23 +291,37 @@ def write_html(html, filename):
             f.write(row)
 
 
-def main(argv):
-    year = datetime.now().year  # TODO: add support for older years
+def main(folder_name: str):
+    year = int(folder_name.rstrip("/"))
     nhl_api_handler = NhlApiHandler(year)
     nhl_api_handler.load()
 
     all_rows = []
-    for i in range(len(argv) - 1):
+    for i in range(4):  # 4 rounds in the playoffs
         round = i + 1
         round_scoring = SCORING[i]
-        csv_rows = read_csv(argv[i+1])
-        picks_by_person = read_picks(csv_rows, nhl_api_handler, round)
-        round_rows = build_data(round_scoring, nhl_api_handler, picks_by_person)
-        all_rows.append(round_rows)
+        file_path = os.path.join(folder_name, f"round{round}.csv")
+        if os.path.exists(file_path):
+            csv_rows = read_csv(file_path)
+            picks_by_person = read_picks(csv_rows, nhl_api_handler, round)
+            round_rows = build_data(round_scoring, nhl_api_handler, picks_by_person)
+            all_rows.append(round_rows)
+        else:
+            round_rows = []
+            series_in_round = len(ALL_SERIES[i])
+            for person in PEOPLE:
+                round_rows.append(Row(
+                    person,
+                    [PickResult(None, 0, 0, PickStatus.UNKNOWN, PickStatus.UNKNOWN)] * series_in_round,
+                    0,
+                    0
+                ))
+            all_rows.append(round_rows)
 
     html = make_html(all_rows, nhl_api_handler, SCORING)
-    write_html(html, f"{year}.html")
+    out_path = os.path.join(folder_name, "index.html")
+    write_html(html, out_path)
 
 
 if __name__ == "__main__":
-    main(sys.argv)
+    main(sys.argv[1])

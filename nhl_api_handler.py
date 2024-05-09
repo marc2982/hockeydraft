@@ -1,6 +1,8 @@
 import requests
+from typing import Generator
 
-from common import Series, Team
+from common import Team
+from series import Series, ALL_SERIES
 
 NHL_API_URL = "https://api-web.nhle.com/v1/playoff-bracket/{0:d}"  # TODO
 TOP = "top"
@@ -33,6 +35,21 @@ class NhlApiHandler:
                 top_seed_wins=series["topSeedWins"],
                 bottom_seed_wins=series["bottomSeedWins"]
             ))
+
+        # add future series to the list
+        existing_letters = map(lambda s: s.letter, self.series)
+        for i, round in enumerate(ALL_SERIES):
+            for series_letter in round:
+                if series_letter in existing_letters:
+                    continue  # already have a record of it
+                self.series.append(Series(
+                    letter=series_letter,
+                    round=i+1,
+                    top_seed=None,
+                    bottom_seed=None,
+                    top_seed_wins=0,
+                    bottom_seed_wins=0
+                ))
 
     def _build_team(self, series: dict, top_or_bottom: str) -> Team:
         seed = series[f"{top_or_bottom}SeedTeam"]
@@ -86,16 +103,15 @@ class NhlApiHandler:
             if series.letter == letter
         )
 
-    def get_series_order(self, round: int) -> list[str]:
-        if round == 1:
+    def _get_series_order(self, round: int) -> list[str]:
+        if round == 1 and self.year == 2024:
             # !!!2024 hack only!!!
-            # since the form doesnt follow the letter order that the api does, hardcode the order of the first round of 2024
-            if self.year == 2024:
-                return ["G", "H", "A", "B", "C", "D", "E", "F"]
-            return ["A", "B", "C", "D", "E", "F", "G", "H"]
-        elif round == 2:
-            return ["I", "J", "K", "L"]
-        elif round == 3:
-            return []
-        elif round == 4:
-            return []
+            # since the form doesnt follow the letter order that the api does,
+            # hardcode the order of the first round of 2024
+            return ["G", "H", "A", "B", "C", "D", "E", "F"]
+        return ALL_SERIES[round - 1]
+
+    def series_iter(self, round: int) -> Generator[str, any, any]:
+        order = self._get_series_order(round)
+        for letter in order:
+            yield self.get_series(letter)
