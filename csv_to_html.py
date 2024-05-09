@@ -97,7 +97,7 @@ def build_data(
 
             winner = series.get_winner()
             team_status = get_team_status(pick, winner)
-            games_status = get_games_status(pick, winner, series.total_games())
+            games_status = get_games_status(pick, winner, series)
 
             points = get_points(scoring, team_status, games_status)
             total_points += points
@@ -251,14 +251,19 @@ def get_team_status(pick: Pick, winner: Winner) -> PickStatus:
     )
 
 
-def get_games_status(pick: Pick, winner: Winner, games_played: int) -> PickStatus:
+def get_games_status(pick: Pick, winner: Winner, series: Series) -> PickStatus:
     # sometimes we can assign correctness early
     if winner is None:
+        games_played = series.total_games()
         # since we know the 7th game will be the last we can give points early
         if games_played == 6 and pick.games == 7:
             return PickStatus.CORRECT
         # if >= games than the guess have been played, it's a bad guess
         if games_played >= pick.games:
+            return PickStatus.INCORRECT
+        # certain games become impossible, ie both teams win 1 each so 4 games is impossible
+        min_games_for_winner = min(series.top_seed_wins, series.bottom_seed_wins) + 4
+        if pick.games < min_games_for_winner:
             return PickStatus.INCORRECT
     return get_pick_status(
         pick,
