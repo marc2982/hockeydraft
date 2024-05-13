@@ -102,7 +102,7 @@ def build_data(
             points = get_points(scoring, team_status, games_status)
             total_points += points
 
-            possible_points = points if winner else calculate_possible_points(scoring, series, pick)
+            possible_points = points if winner else calculate_possible_points(scoring, team_status, games_status)
             total_possible_points += possible_points
 
             pick_results.append(PickResult(pick, points, possible_points, team_status, games_status))
@@ -283,10 +283,10 @@ def get_points(scoring: Scoring, team_status: PickStatus, games_status: PickStat
 
 
 # this function should ONLY be called when there is no winner
-def calculate_possible_points(scoring: Scoring, series: Series, pick: Pick) -> int:
-    possible_from_team = scoring.team
-    possible_from_games = scoring.games if pick.games > series.total_games() else 0
-    possible_from_bonus = scoring.bonus if possible_from_games > 0 else 0
+def calculate_possible_points(scoring: Scoring, team_status: PickStatus, games_status: PickStatus) -> int:
+    possible_from_team = scoring.team if team_status in [PickStatus.CORRECT, PickStatus.UNKNOWN] else 0
+    possible_from_games = scoring.games if games_status in [PickStatus.CORRECT, PickStatus.UNKNOWN] else 0
+    possible_from_bonus = scoring.bonus if possible_from_team > 0 and possible_from_games > 0 else 0
     return possible_from_team + possible_from_games + possible_from_bonus
 
 
