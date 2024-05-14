@@ -1,8 +1,8 @@
-import requests
 from typing import Generator
+import requests
 
-from common import Team
-from series import Series, ALL_SERIES
+from .common import Team
+from .series import Series, ALL_SERIES
 
 NHL_API_URL = "https://api-web.nhle.com/v1/playoff-bracket/{0:d}"  # TODO
 TOP = "top"

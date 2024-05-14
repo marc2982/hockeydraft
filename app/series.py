@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from common import Team, Winner
+from .common import Team, Winner
 
 ALL_SERIES = [
     ["A", "B", "C", "D", "E", "F", "G", "H"],

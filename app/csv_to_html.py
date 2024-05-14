@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
+from enum import Enum
 import csv
 import os
 import sys
-from enum import Enum
 
 from airium import Airium
 
-from common import Scoring, Winner, Pick, PickResult, Row, SummaryRow
-from series import Series, ALL_SERIES
-from nhl_api_handler import NhlApiHandler
+from .common import Scoring, Winner, Pick, PickResult, Row, SummaryRow
+from .nhl_api_handler import NhlApiHandler
+from .series import Series, ALL_SERIES
 
 PEOPLE = [
     'Benedict',
@@ -296,7 +296,7 @@ def write_html(html, filename):
             f.write(row)
 
 
-def main(folder_name: str):
+def main(folder_name: str) -> tuple[str, str]:
     year = int(folder_name.rstrip("/"))
     nhl_api_handler = NhlApiHandler(year)
     nhl_api_handler.load()
@@ -325,7 +325,7 @@ def main(folder_name: str):
 
     html = make_html(all_rows, nhl_api_handler, SCORING)
     out_path = os.path.join(folder_name, "index.html")
-    write_html(html, out_path)
+    return html, out_path
 
 
 if __name__ == "__main__":
