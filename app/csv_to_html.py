@@ -52,9 +52,10 @@ def read_csv(csv_filename):
 def read_picks(
         rows: list[Row],
         nhl_api_handler: NhlApiHandler,
+        year: int,
         round: int
         ) -> dict[str, list[Pick]]:
-    series_order = list(nhl_api_handler.series_iter(round))
+    series_order = get_series_import_order(year, round)
 
     trs = {}
     for row in rows:
@@ -64,11 +65,11 @@ def read_picks(
 
         i = 0
         for col in col_iter:
-            team_name = col
+            team_name = strip_rank(col)
             num_games = next(col_iter)
 
             pick = Pick(
-                series_letter=series_order[i].letter,
+                series_letter=series_order[i],
                 team=nhl_api_handler.get_team(team_name),
                 games=int(num_games)
             )
@@ -80,10 +81,30 @@ def read_picks(
     return trs
 
 
+def get_series_import_order(year: int, round: int) -> list[str]:
+    if round == 1 and year == 2024:
+        # !!!2024 hack only!!!
+        # since the form doesnt follow the letter order that the api does,
+        # hardcode the order of the first round of 2024
+        return ["G", "H", "A", "B", "C", "D", "E", "F"]
+    elif year == 2023:
+        if round == 1:
+            return ["E", "F", "G", "H", "A", "B", "C", "D"]
+    return ALL_SERIES[round - 1]
+
+
+def strip_rank(team_name: str) -> str:
+    i = team_name.find("(")
+    if i == -1:
+        return team_name
+    return team_name[:i-1]  # strip the end, including the space before (
+
+
 def build_data(
         scoring: Scoring,
         nhl_api_handler: NhlApiHandler,
-        picks_by_person: dict[str, list[Pick]]
+        picks_by_person: dict[str, list[Pick]],
+        series_letters: list[str]
         ) -> list[Row]:
     rows = []
 
@@ -92,7 +113,8 @@ def build_data(
         total_points = 0
         total_possible_points = 0
 
-        for pick in picks:
+        for series_letter in series_letters:
+            pick = next(p for p in picks if p.series_letter == series_letter)
             series = nhl_api_handler.get_series(pick.series_letter)
 
             winner = series.get_winner()
@@ -105,7 +127,8 @@ def build_data(
             possible_points = points if winner else calculate_possible_points(scoring, team_status, games_status)
             total_possible_points += possible_points
 
-            pick_results.append(PickResult(pick, points, possible_points, team_status, games_status))
+            p = PickResult(series.letter, pick, points, possible_points, team_status, games_status)
+            pick_results.append(p)
 
         rows.append(Row(person, pick_results, total_points, total_possible_points))
 
@@ -137,16 +160,15 @@ def make_html(all_rows: list[list[Row]], nhl_api_handler: NhlApiHandler, scoring
 def display_summary_table(a: Airium, all_rows: list[list[Row]]):
     # if not all 4 rounds have happened yet, put in 0s
     while len(all_rows) < 4:
-        rows = []
-        for row in all_rows[0]:
-            rows.append(
-                Row(row.person, [], 0, 0)
-            )
+        rows = [
+            Row(row.person, [], 0, 0)
+            for row in all_rows[0]
+        ]
         all_rows.append(rows)
     # arrange by person and calculate scores
     scores: dict[str, SummaryRow] = {}
-    for rows in all_rows:
-        for row in rows:
+    for round_rows in all_rows:
+        for row in round_rows:
             summary_row = scores.get(row.person, SummaryRow(row.person, [], 0, 0))
             scores[row.person] = SummaryRow(
                 row.person,
@@ -215,7 +237,7 @@ def display_table(a: Airium, round: int, rows: list[Row], nhl_api_handler: NhlAp
                 leader_class = " leader" if rank == 1 and row.total_points > 0 else ""
                 with a.tr():
                     a.td(_t=row.person, klass="person" + leader_class)
-                    for result in row.pick_results:
+                    for result in sorted(row.pick_results, key=lambda r: r.series_letter):
                         with a.td():
                             with a.div(klass="pick"):
                                 with a.div(klass=f"img_container {result.team_status.name.lower()}"):
@@ -308,16 +330,17 @@ def main(folder_name: str) -> tuple[str, str]:
         file_path = os.path.join(folder_name, f"round{round}.csv")
         if os.path.exists(file_path):
             csv_rows = read_csv(file_path)
-            picks_by_person = read_picks(csv_rows, nhl_api_handler, round)
-            round_rows = build_data(round_scoring, nhl_api_handler, picks_by_person)
+            picks_by_person = read_picks(csv_rows, nhl_api_handler, year, round)
+            round_rows = build_data(round_scoring, nhl_api_handler, picks_by_person, ALL_SERIES[i])
             all_rows.append(round_rows)
         else:
             round_rows = []
-            series_in_round = len(ALL_SERIES[i])
             for person in PEOPLE:
                 round_rows.append(Row(
                     person,
-                    [PickResult(None, 0, 0, PickStatus.UNKNOWN, PickStatus.UNKNOWN)] * series_in_round,
+                    [PickResult(series_letter, None, 0, 0, PickStatus.UNKNOWN, PickStatus.UNKNOWN)
+                     for series_letter in ALL_SERIES[i]
+                     ],
                     0,
                     0
                 ))

@@ -17,6 +17,7 @@ class NhlApiHandler:
         self.series: list[Series] = []
 
     def load(self):
+        print(f"Calling API: {self.url}")
         response = requests.get(self.url)
         response.raise_for_status()
 
@@ -63,38 +64,23 @@ class NhlApiHandler:
             name=seed["name"]["default"],
             short=short,
             logo=seed["logo"],
-            rank=self._convert_rank(series[f"{top_or_bottom}SeedRankAbbrev"], short),
+            rank=series[f"{top_or_bottom}SeedRankAbbrev"],
             is_top_seed=True if top_or_bottom == TOP else False
         )
 
         self.teams[team.short] = team
         return team
 
-    # !!!2024 hack only!!!
-    # we used A, C, M, P to indicate division, but the api only uses D (for division)
-    # in the future we should use D to be consistent, but for this year (2024) we have to convert
-    def _convert_rank(self, rank: str, short: str) -> str:
-        if self.year != 2024:
-            return rank
-        if rank[0] == "D":
-            if short in ["VAN", "EDM", "LAK"]:  # pacific
-                return f"P{rank[1]}"
-            if short in ["FLA", "TOR", "BOS"]:  # atlantic
-                return f"A{rank[1]}"
-            if short in ["CAR", "NYI", "NYR"]:  # metropolitan
-                return f"M{rank[1]}"
-            if short in ["DAL", "COL", "WPG"]:  # central
-                return f"C{rank[1]}"
-        return rank
-
     # team_pick_str matches the full name of the team in picks.csv
     def get_team(self, team_pick_str: str) -> Team:
-        return next(  # return first occurrence or die
-            team
-            for team in self.teams.values()
-            if f"{team.name} ({team.rank})" == team_pick_str
-            or team.name == team_pick_str
-        )
+        try:
+            return next(  # return first occurrence or die
+                team
+                for team in self.teams.values()
+                if team.name == team_pick_str
+            )
+        except StopIteration:
+            raise Exception(f"Could not find {team_pick_str}")
 
     def get_series(self, letter: str) -> Series:
         return next(  # return first occurrence or die
@@ -103,15 +89,7 @@ class NhlApiHandler:
             if series.letter == letter
         )
 
-    def _get_series_order(self, round: int) -> list[str]:
-        if round == 1 and self.year == 2024:
-            # !!!2024 hack only!!!
-            # since the form doesnt follow the letter order that the api does,
-            # hardcode the order of the first round of 2024
-            return ["G", "H", "A", "B", "C", "D", "E", "F"]
-        return ALL_SERIES[round - 1]
-
     def series_iter(self, round: int) -> Generator[str, any, any]:
-        order = self._get_series_order(round)
+        order = ALL_SERIES[round-1]
         for letter in order:
             yield self.get_series(letter)
