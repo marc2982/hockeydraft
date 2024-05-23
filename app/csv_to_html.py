@@ -117,7 +117,7 @@ def make_html(all_rows: list[list[Row]], nhl_api_handler: NhlApiHandler, scoring
     a('<!DOCTYPE html>')
     with a.html(lang="en"):
         with a.head():
-            a.title(_t="Bryan Family Playoff Pool - Round 1")  # TODO
+            a.title(_t="Bryan Family Playoff Pool")
             a.link(href='../css/csv_to_html.css', rel='stylesheet')
             a.link(href='../css/teams.css', rel='stylesheet')
             a.link(
@@ -188,7 +188,7 @@ def to_str(num: int) -> str:
 def display_table(a: Airium, round: int, rows: list[Row], nhl_api_handler: NhlApiHandler, scoring: Scoring):
     round_str = f"round{round}"
     with a.div(id=round_str):
-        a.h2(_t=f"Round {round}")
+        a.h2(_t=f"Round {round}", href=f"#{round_str}")
         with a.ul():
             a.li(_t=f"Correct team: {scoring[0]} point(s)")
             a.li(_t=f"Correct games: {scoring[1]} point(s)")
