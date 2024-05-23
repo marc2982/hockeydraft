@@ -112,7 +112,7 @@ def build_data(
     return rows
 
 
-def make_html(all_rows: list[list[Row]], nhl_api_handler: NhlApiHandler, scoring: Scoring) -> str:
+def make_html(all_rows: list[list[Row]], nhl_api_handler: NhlApiHandler, scoring: list[Scoring]) -> str:
     a = Airium()
     a('<!DOCTYPE html>')
     with a.html(lang="en"):
@@ -190,9 +190,9 @@ def display_table(a: Airium, round: int, rows: list[Row], nhl_api_handler: NhlAp
     with a.div(id=round_str):
         a.h2(_t=f"Round {round}", href=f"#{round_str}")
         with a.ul():
-            a.li(_t=f"Correct team: {scoring[0]} point(s)")
-            a.li(_t=f"Correct games: {scoring[1]} point(s)")
-            a.li(_t=f"Both correct: {scoring[2]} bonus point(s)")
+            a.li(_t=f"Correct team: {scoring.team} point(s)")
+            a.li(_t=f"Correct games: {scoring.games} point(s)")
+            a.li(_t=f"Both correct: {scoring.bonus} bonus point(s)")
         with a.table(klass="table table-striped containing_table table-hover", id=f"{round_str}Table"):
             with a.tr():
                 a.th(_t="")
