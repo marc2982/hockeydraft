@@ -28,10 +28,10 @@ PEOPLE = [
     'Theodore'
 ]
 
-PickStatus = Enum("PickStatus", [
-    "CORRECT",
-    "INCORRECT",
-    "UNKNOWN"
+PickStatus = Enum('PickStatus', [
+    'CORRECT',
+    'INCORRECT',
+    'UNKNOWN'
 ])
 
 SCORING = [
@@ -91,30 +91,37 @@ def get_series_import_order(year: int, round: int) -> list[str]:
     pick_order = ALL_SERIES
     if year == 2024:
         pick_order = [
-            ["G", "H", "A", "B", "C", "D", "E", "F"],
-            ["I", "J", "K", "L"],
-            ["M", "N"],
-            ["O"]
+            ['G', 'H', 'A', 'B', 'C', 'D', 'E', 'F'],
+            ['I', 'J', 'K', 'L'],
+            ['M', 'N'],
+            ['O']
         ]
     elif year == 2023:
         pick_order = [
-            ["E", "F", "G", "H", "A", "B", "C", "D"],
+            ['E', 'F', 'G', 'H', 'A', 'B', 'C', 'D'],
             ['K', 'L', 'I', 'J'],
             ['N', 'M'],
             ['O']
         ]
     elif year == 2022:
         pick_order = [
-            ["G", "H", "A", "B", "C", "D", "E", "F"],
-            ['K', 'L', 'I', 'J'],
+            ['G', 'H', 'A', 'B', 'C', 'D', 'E', 'F'],
+            ['K', 'I', 'J', 'L'],
             ['N', 'M'],
+            ['O']
+        ]
+    elif year == 2021:
+        pick_order = [
+            ['E', 'F', 'G', 'H', 'A', 'B', 'C', 'D'],
+            ['K', 'I', 'J', 'L'],
+            ['M', 'N'],
             ['O']
         ]
     return pick_order[round - 1]
 
 
 def strip_rank(team_name: str) -> str:
-    i = team_name.find("(")
+    i = team_name.find('(')
     if i == -1:
         return team_name
     return team_name[:i-1]  # strip the end, including the space before (
@@ -158,18 +165,18 @@ def build_data(
 def make_html(all_rows: list[list[Row]], nhl_api_handler: NhlApiHandler, scoring: list[Scoring]) -> str:
     a = Airium()
     a('<!DOCTYPE html>')
-    with a.html(lang="en"):
+    with a.html(lang='en'):
         with a.head():
-            a.title(_t="Bryan Family Playoff Pool")
+            a.title(_t='Bryan Family Playoff Pool')
             a.link(href='../css/csv_to_html.css', rel='stylesheet')
             a.link(href='../css/teams.css', rel='stylesheet')
             a.link(
                 href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css',
-                rel="stylesheet",
-                crossorigin="anonymous"
+                rel='stylesheet',
+                crossorigin='anonymous'
             )
-            a.link(href="https://cdn.datatables.net/v/dt/dt-2.0.6/datatables.min.css", rel="stylesheet")
-            a.script(src="https://code.jquery.com/jquery-3.7.1.min.js")
+            a.link(href='https://cdn.datatables.net/v/dt/dt-2.0.6/datatables.min.css', rel='stylesheet')
+            a.script(src='https://code.jquery.com/jquery-3.7.1.min.js')
         with a.body():
             display_summary_table(a, all_rows)
             for i, rows in enumerate(all_rows):
@@ -197,76 +204,76 @@ def display_summary_table(a: Airium, all_rows: list[list[Row]]):
                 summary_row.possible_points + row.possible_points
             )
     # render table
-    with a.div(id="summary"):
-        with a.table(klass="table table-striped containing_table table-hover", id="summaryTable"):
+    with a.div(id='summary'):
+        with a.table(klass='table table-striped containing_table table-hover', id='summaryTable'):
             with a.tr():
-                a.th(_t="")
-                a.th(_t="Round 1")
-                a.th(_t="Round 2")
-                a.th(_t="Round 3")
-                a.th(_t="Round 4")
-                a.th(_t="Total Points")
-                a.th(_t="Rank")
-                a.th(_t="Total Possible Points")
+                a.th(_t='')
+                a.th(_t='Round 1')
+                a.th(_t='Round 2')
+                a.th(_t='Round 3')
+                a.th(_t='Round 4')
+                a.th(_t='Total Points')
+                a.th(_t='Rank')
+                a.th(_t='Total Possible Points')
             # TODO: precalc rank
             all_points = list(map(lambda r: r.total_points, scores.values()))
             for summary_row in sorted(scores.values(), key=lambda s: (s.total_points, s.person), reverse=True):
                 rank = excel_rank(all_points, summary_row.total_points)
-                leader_class = " leader" if rank == 1 and summary_row.total_points > 0 else ""
+                leader_class = ' leader' if rank == 1 and summary_row.total_points > 0 else ''
                 with a.tr(klass=leader_class):
-                    a.td(_t=summary_row.person, klass="person")
+                    a.td(_t=summary_row.person, klass='person')
                     for round in summary_row.round_totals:
-                        a.td(_t=to_str(round), klass="round_total")
-                    a.td(_t=to_str(summary_row.total_points), klass="points")
-                    a.td(_t=rank, klass="rank")
-                    a.td(_t=to_str(summary_row.possible_points), klass="possible_points")
+                        a.td(_t=to_str(round), klass='round_total')
+                    a.td(_t=to_str(summary_row.total_points), klass='points')
+                    a.td(_t=rank, klass='rank')
+                    a.td(_t=to_str(summary_row.possible_points), klass='possible_points')
 
 
 # hack necessary because airium considers 0 == None and doesnt display it
 def to_str(num: int) -> str:
-    return "0" if num == 0 else str(num)
+    return '0' if num == 0 else str(num)
 
 
 def display_table(a: Airium, round: int, rows: list[Row], nhl_api_handler: NhlApiHandler, scoring: Scoring):
-    round_str = f"round{round}"
+    round_str = f'round{round}'
     with a.div(id=round_str):
-        a.h2(_t=f"Round {round}", href=f"#{round_str}")
+        a.h2(_t=f'Round {round}', href=f'#{round_str}')
         with a.ul():
-            a.li(_t=f"Correct team: {scoring.team} point(s)")
-            a.li(_t=f"Correct games: {scoring.games} point(s)")
-            a.li(_t=f"Both correct: {scoring.bonus} bonus point(s)")
-        with a.table(klass="table table-striped containing_table table-hover", id=f"{round_str}Table"):
+            a.li(_t=f'Correct team: {scoring.team} point(s)')
+            a.li(_t=f'Correct games: {scoring.games} point(s)')
+            a.li(_t=f'Both correct: {scoring.bonus} bonus point(s)')
+        with a.table(klass='table table-striped containing_table table-hover', id=f'{round_str}Table'):
             with a.tr():
-                a.th(_t="")
+                a.th(_t='')
                 for series in nhl_api_handler.series_iter(round):
-                    winning_seed_class = "winning_seed"
-                    top_seed_class = winning_seed_class if series.is_top_seed_winner() else ""
-                    bottom_seed_class = winning_seed_class if series.is_bottom_seed_winner() else ""
+                    winning_seed_class = 'winning_seed'
+                    top_seed_class = winning_seed_class if series.is_top_seed_winner() else ''
+                    bottom_seed_class = winning_seed_class if series.is_bottom_seed_winner() else ''
                     with a.th():
-                        a.span(_t=f"Series {series.letter}:")
+                        a.span(_t=f'Series {series.letter}:')
                         a.br()
                         a.span(_t=series.get_top_seed_short(), klass=top_seed_class)
                         a.br()
                         a.span(_t=series.get_bottom_seed_short(), klass=bottom_seed_class)
-                a.th(_t="Points")
-                a.th(_t="Rank")
-                a.th(_t="Possible Points")
+                a.th(_t='Points')
+                a.th(_t='Rank')
+                a.th(_t='Possible Points')
             all_points = list(map(lambda r: r.total_points, rows))
             for row in sorted(rows, key=lambda x: x.person):
                 rank = excel_rank(all_points, row.total_points)
-                leader_class = " leader" if rank == 1 and row.total_points > 0 else ""
+                leader_class = ' leader' if rank == 1 and row.total_points > 0 else ''
                 with a.tr():
-                    a.td(_t=row.person, klass="person" + leader_class)
+                    a.td(_t=row.person, klass='person' + leader_class)
                     for result in sorted(row.pick_results, key=lambda r: r.series_letter):
                         with a.td():
-                            with a.div(klass="pick"):
-                                with a.div(klass=f"img_container {result.team_status.name.lower()}"):
+                            with a.div(klass='pick'):
+                                with a.div(klass=f'img_container {result.team_status.name.lower()}'):
                                     if result.pick:
                                         a.img(src=result.pick.team.logo, alt=result.pick.team.short)
-                                a.div(_t=result.pick.games if result.pick else "", klass=f"games {result.games_status.name.lower()}")
-                    a.td(_t=to_str(row.total_points), klass="points" + leader_class)
-                    a.td(_t=rank, klass="rank" + leader_class)
-                    a.td(_t=to_str(row.possible_points), klass="possible_points")
+                                a.div(_t=result.pick.games if result.pick else '', klass=f'games {result.games_status.name.lower()}')
+                    a.td(_t=to_str(row.total_points), klass='points' + leader_class)
+                    a.td(_t=rank, klass='rank' + leader_class)
+                    a.td(_t=to_str(row.possible_points), klass='possible_points')
 
 
 def excel_rank(values, target):
@@ -339,7 +346,7 @@ def write_html(html, filename):
 
 
 def main(folder_name: str) -> tuple[str, str]:
-    year = int(folder_name.rstrip("/"))
+    year = int(folder_name.rstrip('/'))
     nhl_api_handler = NhlApiHandler(year)
     nhl_api_handler.load()
 
@@ -347,7 +354,7 @@ def main(folder_name: str) -> tuple[str, str]:
     for i in range(4):  # 4 rounds in the playoffs
         round = i + 1
         round_scoring = SCORING[i]
-        file_path = os.path.join(folder_name, f"round{round}.csv")
+        file_path = os.path.join(folder_name, f'round{round}.csv')
         if os.path.exists(file_path):
             csv_rows = read_csv(file_path)
             picks_by_person = read_picks(csv_rows, nhl_api_handler, year, round)
@@ -367,9 +374,9 @@ def main(folder_name: str) -> tuple[str, str]:
             all_rows.append(round_rows)
 
     html = make_html(all_rows, nhl_api_handler, SCORING)
-    out_path = os.path.join(folder_name, "index.html")
+    out_path = os.path.join(folder_name, 'index.html')
     return html, out_path
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main(sys.argv[1])
