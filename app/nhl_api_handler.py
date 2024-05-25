@@ -73,6 +73,8 @@ class NhlApiHandler:
 
     # team_pick_str matches the full name of the team in picks.csv
     def get_team(self, team_pick_str: str) -> Team:
+        if team_pick_str == "St Louis Blues":
+            team_pick_str = "St. Louis Blues"
         try:
             return next(  # return first occurrence or die
                 team
