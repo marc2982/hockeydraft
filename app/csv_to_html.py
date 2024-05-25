@@ -68,11 +68,14 @@ def read_picks(
             team_name = strip_rank(col)
             num_games = next(col_iter)
 
-            pick = Pick(
-                series_letter=series_order[i],
-                team=nhl_api_handler.get_team(team_name),
-                games=int(num_games)
-            )
+            try:
+                pick = Pick(
+                    series_letter=series_order[i],
+                    team=nhl_api_handler.get_team(team_name),
+                    games=int(num_games)
+                )
+            except Exception:
+                print(series_order, i)
 
             tds.append(pick)
             i += 1
@@ -81,27 +84,33 @@ def read_picks(
     return trs
 
 
+# !!!HACK ALERT!!!
+# since previous forms dont follow the letter order that the api does,
+# hardcode the order the picks are in. Future years should match
 def get_series_import_order(year: int, round: int) -> list[str]:
-    if round == 1 and year == 2024:
-        # !!!2024 hack only!!!
-        # since the form doesnt follow the letter order that the api does,
-        # hardcode the order of the first round of 2024
-        return ["G", "H", "A", "B", "C", "D", "E", "F"]
+    pick_order = ALL_SERIES
+    if year == 2024:
+        pick_order = [
+            ["G", "H", "A", "B", "C", "D", "E", "F"],
+            ["I", "J", "K", "L"],
+            ["M", "N"],
+            ["O"]
+        ]
     elif year == 2023:
-        if round == 1:
-            return ["E", "F", "G", "H", "A", "B", "C", "D"]
-        elif round == 2:
-            return ['K', 'L', 'I', 'J']
-        elif round == 3:
-            return ['N', 'M']
+        pick_order = [
+            ["E", "F", "G", "H", "A", "B", "C", "D"],
+            ['K', 'L', 'I', 'J'],
+            ['N', 'M'],
+            ['O']
+        ]
     elif year == 2022:
-        if round == 1:
-            return ["G", "H", "A", "B", "C", "D", "E", "F"]
-        elif round == 2:
-            return ['K', 'L', 'I', 'J']
-        elif round == 3:
-            return ['N', 'M']
-    return ALL_SERIES[round - 1]
+        pick_order = [
+            ["G", "H", "A", "B", "C", "D", "E", "F"],
+            ['K', 'L', 'I', 'J'],
+            ['N', 'M'],
+            ['O']
+        ]
+    return pick_order[round - 1]
 
 
 def strip_rank(team_name: str) -> str:
