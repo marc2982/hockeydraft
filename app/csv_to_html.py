@@ -90,6 +90,10 @@ def get_series_import_order(year: int, round: int) -> list[str]:
     elif year == 2023:
         if round == 1:
             return ["E", "F", "G", "H", "A", "B", "C", "D"]
+        elif round == 2:
+            return ['K', 'L', 'I', 'J']
+        elif round == 3:
+            return ['N', 'M']
     return ALL_SERIES[round - 1]
 
 
