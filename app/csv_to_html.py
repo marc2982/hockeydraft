@@ -68,14 +68,11 @@ def read_picks(
             team_name = strip_rank(col)
             num_games = next(col_iter)
 
-            try:
-                pick = Pick(
-                    series_letter=series_order[i],
-                    team=nhl_api_handler.get_team(team_name),
-                    games=int(num_games)
-                )
-            except Exception:
-                print(series_order, i)
+            pick = Pick(
+                series_letter=series_order[i],
+                team=nhl_api_handler.get_team(team_name),
+                games=int(num_games)
+            )
 
             tds.append(pick)
             i += 1
@@ -115,6 +112,13 @@ def get_series_import_order(year: int, round: int) -> list[str]:
             ['E', 'F', 'G', 'H', 'A', 'B', 'C', 'D'],
             ['K', 'I', 'J', 'L'],
             ['M', 'N'],
+            ['O']
+        ]
+    elif year == 2020:
+        pick_order = [
+            ['E', 'F', 'G', 'H', 'A', 'B', 'C', 'D'],
+            ['L', 'K', 'I', 'J'],
+            ['N', 'M'],
             ['O']
         ]
     return pick_order[round - 1]
