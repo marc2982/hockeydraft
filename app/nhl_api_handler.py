@@ -86,6 +86,7 @@ class NhlApiHandler:
             "LA": "LAK",
             "NJ": "NJD",
             "CLB": "CBJ",
+            "CAL": "CGY"
         }
         team_pick_str = conversion_map.get(team_pick_str, team_pick_str)
 
