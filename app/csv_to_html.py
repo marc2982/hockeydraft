@@ -142,6 +142,13 @@ def get_series_import_order(year: int, round: int) -> list[str]:
             ['N', 'M'],
             ['O']
         ]
+    elif year == 2016:
+        pick_order = [
+            ['E', 'F', 'G', 'H', 'C', 'D', 'A', 'B'],
+            ['K', 'L', 'J', 'I'],
+            ['N', 'M'],
+            ['O']
+        ]
     return pick_order[round - 1]
 
 
@@ -182,7 +189,7 @@ def build_data(
             p = PickResult(series.letter, pick, points, possible_points, team_status, games_status)
             pick_results.append(p)
 
-        rows.append(Row(person, pick_results, total_points, total_possible_points))
+        rows.append(Row(person.capitalize(), pick_results, total_points, total_possible_points))
 
     return rows
 
