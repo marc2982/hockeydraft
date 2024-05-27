@@ -15,7 +15,7 @@ cp ~/localgit/hockeydraft/$year/index.html playoffs/$year.html
 sed -i -E 's;\.\./css;css;g' playoffs/$year.html
 
 git --no-pager diff && \
-    git add playoffs/$year.html && \
+    git add playoffs/$year.html playoffs/index.html && \
     git commit -m "$msg" && \
     git push
 
