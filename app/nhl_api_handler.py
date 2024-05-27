@@ -76,17 +76,17 @@ class NhlApiHandler:
         # handle team discrepancies between picks and api
         # also handle older years when picks were only shorthand
         conversion_map = {
-            "St Louis Blues": "St. Louis Blues",
+            "CAL": "CGY",
+            "CLB": "CBJ",
+            "LA": "LAK",
+            "LV": "VGK",
             "Montreal Canadiens": "Montréal Canadiens",
             "NAS": "NSH",
-            "LV": "VGK",
+            "NJ": "NJD",
+            "SJ": "SJS",
+            "St Louis Blues": "St. Louis Blues",
             "TB": "TBL",
             "WAS": "WSH",
-            "SJ": "SJS",
-            "LA": "LAK",
-            "NJ": "NJD",
-            "CLB": "CBJ",
-            "CAL": "CGY"
         }
         team_pick_str = conversion_map.get(team_pick_str, team_pick_str)
 
