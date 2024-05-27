@@ -74,16 +74,26 @@ class NhlApiHandler:
     # team_pick_str matches the full name of the team in picks.csv
     def get_team(self, team_pick_str: str) -> Team:
         # handle team discrepancies between picks and api
-        if team_pick_str == "St Louis Blues":
-            team_pick_str = "St. Louis Blues"
-        elif team_pick_str == "Montreal Canadiens":
-            team_pick_str = "Montréal Canadiens"
+        # also handle older years when picks were only shorthand
+        conversion_map = {
+            "St Louis Blues": "St. Louis Blues",
+            "Montreal Canadiens": "Montréal Canadiens",
+            "NAS": "NSH",
+            "LV": "VGK",
+            "TB": "TBL",
+            "WAS": "WSH",
+            "SJ": "SJS",
+            "LA": "LAK",
+            "NJ": "NJD",
+            "CLB": "CBJ",
+        }
+        team_pick_str = conversion_map.get(team_pick_str, team_pick_str)
 
         try:
             return next(  # return first occurrence or die
                 team
                 for team in self.teams.values()
-                if team.name == team_pick_str
+                if team_pick_str in [team.name, team.short]
             )
         except StopIteration:
             raise Exception(f"Could not find {team_pick_str}")
