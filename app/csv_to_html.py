@@ -12,6 +12,7 @@ from .series import Series, ALL_SERIES
 
 PEOPLE = [
     'Benedict',
+    'Chrissy',
     'Derrick',
     'Glenda',
     'Jaclyn',
@@ -42,11 +43,50 @@ SCORING = [
 ]
 
 
-def read_csv(csv_filename):
+def read_csv(csv_filename: str, skip_headers: bool) -> list:
     with open(csv_filename, 'r') as f:
         reader = csv.reader(f)
-        next(reader, None)  # skip the headers
+        if skip_headers:
+            next(reader, None)  # skip the headers
         return [row for row in reader]
+
+
+def read_old_picks(
+        rows: list[Row],
+        nhl_api_handler: NhlApiHandler,
+        year: int,
+        round: int
+        ) -> dict[str, list[Pick]]:
+    series_order = get_series_import_order(year, round)
+
+    trs = {}
+    for row in rows:
+        tds = []
+
+        person = row[0]
+        if person.lower() == "dad":
+            person = "Derrick"
+        elif person.lower() == "mom":
+            person = "Chrissy"
+
+        col_iter = iter(row[1:])
+
+        i = 0
+        for col in col_iter:
+            raw_team, num_games = map(lambda r: r.strip(), col.split("-"))
+            team_name = strip_rank(raw_team)
+
+            pick = Pick(
+                series_letter=series_order[i],
+                team=nhl_api_handler.get_team(team_name),
+                games=int(num_games)
+            )
+
+            tds.append(pick)
+            i += 1
+
+        trs[person] = tds
+    return trs
 
 
 def read_picks(
@@ -157,6 +197,13 @@ def get_series_import_order(year: int, round: int) -> list[str]:
             ['O']
         ]
     elif year == 2014:
+        pick_order = [
+            ['E', 'F', 'G', 'H', 'A', 'B', 'C', 'D'],
+            ['K', 'L', 'I', 'J'],
+            ['N', 'M'],
+            ['O']
+        ]
+    elif year == 2000:
         pick_order = [
             ['E', 'F', 'G', 'H', 'A', 'B', 'C', 'D'],
             ['K', 'L', 'I', 'J'],
@@ -402,8 +449,12 @@ def main(folder_name: str) -> tuple[str, str]:
         round_scoring = SCORING[i]
         file_path = os.path.join(folder_name, f'round{round}.csv')
         if os.path.exists(file_path):
-            csv_rows = read_csv(file_path)
-            picks_by_person = read_picks(csv_rows, nhl_api_handler, year, round)
+            if year < 2008:
+                csv_rows = read_csv(file_path, False)
+                picks_by_person = read_old_picks(csv_rows, nhl_api_handler, year, round)
+            else:
+                csv_rows = read_csv(file_path)
+                picks_by_person = read_picks(csv_rows, nhl_api_handler, year, round)
             round_rows = build_data(round_scoring, nhl_api_handler, picks_by_person, ALL_SERIES[i])
             all_rows.append(round_rows)
         else:

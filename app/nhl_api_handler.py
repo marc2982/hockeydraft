@@ -87,6 +87,7 @@ class NhlApiHandler:
             "St Louis Blues": "St. Louis Blues",
             "TB": "TBL",
             "WAS": "WSH",
+            "PHE": "PHX"
         }
         team_pick_str = conversion_map.get(team_pick_str, team_pick_str)
 
