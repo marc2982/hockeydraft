@@ -80,14 +80,16 @@ class NhlApiHandler:
             "CLB": "CBJ",
             "LA": "LAK",
             "LV": "VGK",
+            "MON": "MTL",
             "Montreal Canadiens": "Montréal Canadiens",
             "NAS": "NSH",
             "NJ": "NJD",
+            "PHE": "PHX",
+            "PHO": "PHX",
             "SJ": "SJS",
             "St Louis Blues": "St. Louis Blues",
             "TB": "TBL",
             "WAS": "WSH",
-            "PHE": "PHX"
         }
         team_pick_str = conversion_map.get(team_pick_str, team_pick_str)
 
