@@ -63,7 +63,6 @@ class NhlApiHandler:
         if short in self.teams:
             return self.teams[short]
 
-        if "logo" not in seed: print(seed)
         team = Team(
             name=seed["name"]["default"],
             short=short,
