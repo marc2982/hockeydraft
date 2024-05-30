@@ -68,6 +68,8 @@ def read_old_picks(
             person = "Derrick"
         elif person.lower() in ["mom", "chris"]:
             person = "Chrissy"
+        elif person.lower() == "m.c.b.":
+            person = "Marc"
 
         col_iter = iter(row[1:])
 
@@ -250,6 +252,13 @@ def get_series_import_order(year: int, round: int) -> list[str]:
             ['E', 'F', 'G', 'H', 'A', 'B', 'C', 'D'],
             ['K', 'L', 'I', 'J'],
             ['N', 'M'],
+            ['O']
+        ]
+    elif year == 1997:
+        pick_order = [
+            ['D', 'C', 'B', 'A', 'H', 'E', 'G', 'F'],
+            ['I', 'J', 'K', 'L'],
+            ['M', 'N'],
             ['O']
         ]
     return pick_order[round - 1]

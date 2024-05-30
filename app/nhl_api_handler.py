@@ -89,6 +89,7 @@ class NhlApiHandler:
             "NASH": "NSH",
             "NJ": "NJD",
             "PHE": "PHX",
+            "PITT": "PIT",
             "PHO": "PHX",
             "SJ": "SJS",
             "St Louis Blues": "St. Louis Blues",
