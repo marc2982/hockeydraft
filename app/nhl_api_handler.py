@@ -37,6 +37,9 @@ class NhlApiHandler:
                 bottom_seed_wins=series["bottomSeedWins"]
             ))
 
+            if series["seriesTitle"] == "Stanley Cup Final":
+                break
+
         # add future series to the list
         existing_letters = map(lambda s: s.letter, self.series)
         for i, round in enumerate(ALL_SERIES):
@@ -60,6 +63,7 @@ class NhlApiHandler:
         if short in self.teams:
             return self.teams[short]
 
+        if "logo" not in seed: print(seed)
         team = Team(
             name=seed["name"]["default"],
             short=short,
@@ -83,6 +87,7 @@ class NhlApiHandler:
             "MON": "MTL",
             "Montreal Canadiens": "Montréal Canadiens",
             "NAS": "NSH",
+            "NASH": "NSH",
             "NJ": "NJD",
             "PHE": "PHX",
             "PHO": "PHX",
