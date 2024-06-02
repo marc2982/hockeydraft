@@ -518,7 +518,7 @@ def main(folder_name: str) -> tuple[str, str]:
                 csv_rows = read_csv(file_path, False)
                 picks_by_person = read_old_picks(csv_rows, nhl_api_handler, year, round)
             else:
-                csv_rows = read_csv(file_path)
+                csv_rows = read_csv(file_path, True)
                 picks_by_person = read_picks(csv_rows, nhl_api_handler, year, round)
             round_rows = build_data(round_scoring, nhl_api_handler, picks_by_person, ALL_SERIES[i])
             all_rows.append(round_rows)
