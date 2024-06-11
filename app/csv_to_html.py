@@ -337,7 +337,7 @@ def make_html(all_rows: list[list[Row]], nhl_api_handler: NhlApiHandler, scoring
             a.script(src='https://code.jquery.com/jquery-3.7.1.min.js')
         with a.body():
             with a.div(id='backToIndex'):
-                with a.a(href="../playoffs/index.html"):
+                with a.a(href="index.html"):
                     a.strong(_t="← Back to all years")
             display_summary_table(a, all_rows)
             for i, rows in enumerate(all_rows):
