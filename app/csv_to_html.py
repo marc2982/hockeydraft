@@ -336,6 +336,9 @@ def make_html(all_rows: list[list[Row]], nhl_api_handler: NhlApiHandler, scoring
             a.link(href='https://cdn.datatables.net/v/dt/dt-2.0.6/datatables.min.css', rel='stylesheet')
             a.script(src='https://code.jquery.com/jquery-3.7.1.min.js')
         with a.body():
+            with a.div(id='backToIndex'):
+                with a.a(href="../index.html"):
+                    a.strong(_t="← Back to all years")
             display_summary_table(a, all_rows)
             for i, rows in enumerate(all_rows):
                 display_table(a, i+1, rows, nhl_api_handler, scoring[i])
@@ -372,7 +375,7 @@ def display_summary_table(a: Airium, all_rows: list[list[Row]]):
                 a.th(_t='Round 4')
                 a.th(_t='Total Points')
                 a.th(_t='Rank')
-                a.th(_t='Total Possible Points')
+                a.th(_t='Maximum Possible Points')
             # TODO: precalc rank
             all_points = list(map(lambda r: r.total_points, scores.values()))
             for summary_row in sorted(scores.values(), key=lambda s: (s.total_points, s.person), reverse=True):
