@@ -17,6 +17,9 @@ window.onload = function() {
         order: [
             [1, 'desc'],
             [2, 'desc'],
+        ],
+        columnDefs: [
+            { targets: [0,1,2], className: 'dt-body-center dt-head-center' }
         ]
     });
 }
@@ -50,13 +53,13 @@ window.onload = function() {
         <tbody>
           <tr class="">
             <td class="person">Glenda</td>
-            <td class="points">10</td>
-            <td class="points">6</td>
+            <td>10</td>
+            <td>6</td>
           </tr>
           <tr class=" leader">
             <td class="person leader">Marc</td>
-            <td class="points">11</td>
-            <td class="points">5</td>
+            <td>11</td>
+            <td>5</td>
           </tr>
         </tbody>
       </table>

@@ -323,6 +323,9 @@ window.onload = function() {
         order: [
             [1, 'desc'],
             [2, 'desc'],
+        ],
+        columnDefs: [
+            { targets: [0,1,2], className: 'dt-body-center dt-head-center' }
         ]
     });
 }
@@ -395,8 +398,8 @@ def display_tiebreaker(
                         leader_class = " leader" if leader == leaders.winner else ""
                         with a.tr(klass=leader_class):
                             a.td(_t=leader, klass='person' + leader_class)
-                            a.td(_t=leaders.teams_map[leader], klass='points')
-                            a.td(_t=leaders.games_map[leader], klass='points')
+                            a.td(_t=leaders.teams_map[leader])
+                            a.td(_t=leaders.games_map[leader])
     return leaders.winner
 
 
