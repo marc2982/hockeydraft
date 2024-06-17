@@ -198,6 +198,20 @@ def get_series_import_order(year: int, round: int) -> list[str]:
             ['N', 'M'],
             ['O']
         ]
+    elif year == 2012:
+        pick_order = [
+            ['E', 'F', 'G', 'H', 'A', 'B', 'C', 'D'],
+            ['K', 'L', 'I', 'J'],
+            ['N', 'M'],
+            ['O']
+        ]
+    elif year == 2011:
+        pick_order = [
+            ['E', 'F', 'G', 'H', 'A', 'B', 'C', 'D'],
+            ['K', 'L', 'I', 'J'],
+            ['N', 'M'],
+            ['O']
+        ]
     elif year == 2010:
         pick_order = [
             ['E', 'F', 'G', 'H', 'A', 'B', 'C', 'D'],
