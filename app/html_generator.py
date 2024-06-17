@@ -97,23 +97,23 @@ class HtmlGenerator:
             with self.a.div(id="tiebreaker"):
                 self.a.h2(_t="Tiebreaker!")
                 with self.a.ol():
-                    self.a.li(_t='Number of teams correct')
                     self.a.li(_t='Number of games correct')
+                    self.a.li(_t='Number of teams correct')
                     self.a.li(_t='Number of goals scored in the final series, ideally chosen before it begins')
                     self.a.li(_t='Coin flip')
                 with self.a.table(klass='table table-striped containing_table table-hover', id='tiebreakerTable'):
                     with self.a.thead():
                         with self.a.tr():
                             self.a.th(_t="Name")
-                            self.a.th(_t="# of correct teams")
                             self.a.th(_t="# of correct games")
+                            self.a.th(_t="# of correct teams")
                     with self.a.tbody():
                         for leader in self.leaders.leaders:
                             leader_class = " leader" if leader == self.leaders.winner else ""
                             with self.a.tr(klass=leader_class):
                                 self.a.td(_t=leader, klass='person' + leader_class)
-                                self.a.td(_t=self.leaders.teams_map[leader])
                                 self.a.td(_t=self.leaders.games_map[leader])
+                                self.a.td(_t=self.leaders.teams_map[leader])
         return self.leaders.winner
 
     def _display_summary_table(self):

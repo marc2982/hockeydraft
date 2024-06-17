@@ -21,13 +21,13 @@ class LeaderCalculator:
         num_teams_correct, num_games_correct = self._calculate_tiebreaker_data(all_rows, leaders)
         leaders_obj = leaders_obj._replace(teams_map=num_teams_correct, games_map=num_games_correct)
 
-        # first compare who got the most teams correct
-        new_leaders = self._tiebreak(num_teams_correct, leaders)
+        # first compare who got the most games correct
+        new_leaders = self._tiebreak(num_games_correct, leaders)
         if len(new_leaders) == 1:
             return leaders_obj._replace(winner=new_leaders[0])
 
-        # next compare who got the most games correct
-        new_leaders = self._tiebreak(num_games_correct, new_leaders)
+        # next compare who got the most teams correct
+        new_leaders = self._tiebreak(num_teams_correct, new_leaders)
         if len(new_leaders) == 1:
             return leaders_obj._replace(winner=new_leaders[0])
 
