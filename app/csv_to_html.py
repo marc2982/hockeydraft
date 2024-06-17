@@ -3,10 +3,9 @@ import csv
 import os
 import sys
 
-from airium import Airium
-
 from .common import Scoring, Winner, Pick, PickResult, PickStatus, Row, SummaryRow
 from .leader_calculator import LeaderCalculator
+from .html_generator import HtmlGenerator
 from .nhl_api_handler import NhlApiHandler
 from .series import Series, ALL_SERIES
 
@@ -314,212 +313,6 @@ def build_data(
     return rows
 
 
-js = """
-window.onload = function() {
-    $('#tiebreakerTable').DataTable({
-        paging: false,
-        searching: false,
-        info: false,
-        order: [
-            [1, 'desc'],
-            [2, 'desc'],
-        ],
-        columnDefs: [
-            { targets: [0,1,2], className: 'dt-body-center dt-head-center' }
-        ]
-    });
-}
-"""
-
-
-def make_html(
-    all_rows: list[list[Row]],
-    nhl_api_handler: NhlApiHandler,
-    scoring: list[Scoring],
-    year: int
-) -> str:
-    a = Airium()
-    a('<!DOCTYPE html>')
-    with a.html(lang='en'):
-        with a.head():
-            a.title(_t=f'{year} Bryan Family Playoff Pool')
-            a.link(href='../css/csv_to_html.css', rel='stylesheet')
-            a.link(href='../css/teams.css', rel='stylesheet')
-
-            a.script(src='https://code.jquery.com/jquery-3.7.1.min.js')
-            a.script(src="https://cdn.datatables.net/2.0.8/js/dataTables.js")
-
-            a.link(
-                href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css',
-                rel='stylesheet'
-            )
-            a.link(href='https://cdn.datatables.net/v/dt/dt-2.0.8/datatables.min.css', rel='stylesheet')
-            a.script(_t=js)
-        with a.body():
-            with a.div(id='backToIndex'):
-                with a.a(href="index.html"):
-                    a.strong(_t="← Back to all years")
-            with a.div():
-                a.h1(_t=year, klass='text-center bg-secondary', style="--bs-bg-opacity: .2;")
-            summary_map = generate_summary_rows(all_rows)
-            rank_map = calculate_rank_map(summary_map)
-            leader = display_tiebreaker(a, all_rows, summary_map, rank_map)
-            if not leader:
-                a.h2(_t="Tiebreak needs to be decided manually!", style="color: red")
-            display_summary_table(a, summary_map, rank_map)
-            for i, rows in enumerate(all_rows):
-                display_table(a, i+1, rows, nhl_api_handler, scoring[i])
-    return str(a)
-
-
-def display_tiebreaker(
-    a: Airium,
-    all_rows: list[list[Row]],
-    summary_map: dict[str, SummaryRow],
-    rank_map: dict[str, int]
-) -> str:
-    leaders = LeaderCalculator().calculate(all_rows, summary_map, rank_map)
-    if len(leaders.leaders) > 1:
-        with a.div(id="tiebreaker"):
-            a.h2(_t="Tiebreaker!")
-            with a.ol():
-                a.li(_t='Number of teams correct')
-                a.li(_t='Number of games correct')
-                a.li(_t='Number of goals scored in the final series, ideally chosen before it begins')
-                a.li(_t='Coin flip')
-            with a.table(klass='table table-striped containing_table table-hover', id='tiebreakerTable'):
-                with a.thead():
-                    with a.tr():
-                        a.th(_t="Name")
-                        a.th(_t="# of correct teams")
-                        a.th(_t="# of correct games")
-                with a.tbody():
-                    for leader in leaders.leaders:
-                        leader_class = " leader" if leader == leaders.winner else ""
-                        with a.tr(klass=leader_class):
-                            a.td(_t=leader, klass='person' + leader_class)
-                            a.td(_t=leaders.teams_map[leader])
-                            a.td(_t=leaders.games_map[leader])
-    return leaders.winner
-
-
-def generate_summary_rows(all_rows: list[list[Row]]) -> dict[str, SummaryRow]:
-    # if not all 4 rounds have happened yet, put in 0s
-    while len(all_rows) < 4:
-        rows = [
-            Row(row.person, [], 0, 0)
-            for row in all_rows[0]
-        ]
-        all_rows.append(rows)
-    # arrange by person and calculate scores
-    scores: dict[str, SummaryRow] = {}
-    for round_rows in all_rows:
-        for row in round_rows:
-            summary_row = scores.get(row.person, SummaryRow(row.person, [], 0, 0))
-            scores[row.person] = SummaryRow(
-                row.person,
-                summary_row.round_totals + [row.total_points],
-                summary_row.total_points + row.total_points,
-                summary_row.possible_points + row.possible_points
-            )
-    return scores
-
-
-def display_summary_table(
-    a: Airium,
-    summary_rows: dict[str, SummaryRow],
-    rank_map: dict[str, int]
-):
-    with a.div(id='summary'):
-        a.h2(_t='Overall', href='overall')
-        with a.table(klass='table table-striped containing_table table-hover', id='summaryTable'):
-            with a.tr():
-                a.th(_t='')
-                a.th(_t='Round 1')
-                a.th(_t='Round 2')
-                a.th(_t='Round 3')
-                a.th(_t='Round 4')
-                a.th(_t='Total Points')
-                a.th(_t='Rank')
-                a.th(_t='Maximum Possible Points')
-            for summary_row in sorted(summary_rows.values(), key=lambda s: (s.total_points, s.person), reverse=True):
-                leader_class = ' leader' if rank_map[summary_row.person] == 1 else ''
-                with a.tr(klass=leader_class):
-                    a.td(_t=summary_row.person, klass='person')
-                    for round in summary_row.round_totals:
-                        a.td(_t=to_str(round), klass='round_total')
-                    a.td(_t=to_str(summary_row.total_points), klass='points')
-                    a.td(_t=rank_map[summary_row.person], klass='rank')
-                    a.td(_t=to_str(summary_row.possible_points), klass='possible_points')
-
-
-def calculate_rank_map(scores: dict[str, SummaryRow]) -> dict[str, int]:
-    summary_rows = scores.values()
-    all_points = list(map(lambda r: r.total_points, summary_rows))
-    return {
-        summary_row.person: excel_rank(all_points, summary_row.total_points)
-        for summary_row in summary_rows
-    }
-
-
-# hack necessary because airium considers 0 == None and doesnt display it
-def to_str(num: int) -> str:
-    return '0' if num == 0 else str(num)
-
-
-def display_table(a: Airium, round: int, rows: list[Row], nhl_api_handler: NhlApiHandler, scoring: Scoring):
-    round_str = f'round{round}'
-    with a.div(id=round_str):
-        a.h2(_t=f'Round {round}', href=f'#{round_str}')
-        with a.ul():
-            a.li(_t=f'Correct team: {scoring.team} point(s)')
-            a.li(_t=f'Correct games: {scoring.games} point(s)')
-            a.li(_t=f'Both correct: {scoring.bonus} bonus point(s)')
-        with a.table(klass='table table-striped containing_table table-hover', id=f'{round_str}Table'):
-            with a.tr():
-                a.th(_t='')
-                for series in nhl_api_handler.series_iter(round):
-                    winning_seed_class = 'winning_seed'
-                    top_seed_class = winning_seed_class if series.is_top_seed_winner() else ''
-                    bottom_seed_class = winning_seed_class if series.is_bottom_seed_winner() else ''
-                    with a.th():
-                        a.span(_t=f'Series {series.letter}:')
-                        a.br()
-                        a.span(_t=series.get_top_seed_short(), klass=top_seed_class)
-                        a.br()
-                        a.span(_t=series.get_bottom_seed_short(), klass=bottom_seed_class)
-                a.th(_t='Points')
-                a.th(_t='Rank')
-                a.th(_t='Possible Points')
-            all_points = list(map(lambda r: r.total_points, rows))
-            for row in sorted(rows, key=lambda x: x.person):
-                rank = excel_rank(all_points, row.total_points)
-                leader_class = ' leader' if rank == 1 and row.total_points > 0 else ''
-                with a.tr():
-                    a.td(_t=row.person, klass='person' + leader_class)
-                    for result in sorted(row.pick_results, key=lambda r: r.series_letter):
-                        with a.td():
-                            with a.div(klass='pick'):
-                                with a.div(klass=f'img_container {result.team_status.name.lower()}'):
-                                    if result.pick:
-                                        a.img(src=result.pick.team.logo, alt=result.pick.team.short)
-                                a.div(
-                                    _t=result.pick.games if result.pick else '',
-                                    klass=f'games {result.games_status.name.lower()}'
-                                )
-                    a.td(_t=to_str(row.total_points), klass='points' + leader_class)
-                    a.td(_t=rank, klass='rank' + leader_class)
-                    a.td(_t=to_str(row.possible_points), klass='possible_points')
-
-
-def excel_rank(values, target):
-    sorted_values = sorted(values, reverse=True)
-    try:
-        return sorted_values.index(target) + 1
-    except ValueError:
-        return None
-
-
 def get_pick_status(pick: Pick, winner: Winner, predicate: callable) -> PickStatus:
     if not winner:
         return PickStatus.UNKNOWN
@@ -613,7 +406,10 @@ def main(folder_name: str) -> tuple[str, str]:
                 ))
             all_rows.append(round_rows)
 
-    html = make_html(all_rows, nhl_api_handler, SCORING, year)
+    html = HtmlGenerator(
+        nhl_api_handler,
+        all_rows
+    ).make_html(SCORING, year)
     out_path = os.path.join(folder_name, 'index.html')
     return html, out_path
 
