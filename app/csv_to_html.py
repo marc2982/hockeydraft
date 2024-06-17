@@ -85,11 +85,11 @@ def read_old_picks(
 
 
 def read_picks(
-        rows: list[Row],
-        nhl_api_handler: NhlApiHandler,
-        year: int,
-        round: int
-        ) -> dict[str, list[Pick]]:
+    rows: list[Row],
+    nhl_api_handler: NhlApiHandler,
+    year: int,
+    round: int
+) -> dict[str, list[Pick]]:
     series_order = get_series_import_order(year, round)
 
     trs = {}
@@ -192,6 +192,13 @@ def get_series_import_order(year: int, round: int) -> list[str]:
             ['O']
         ]
     elif year == 2014:
+        pick_order = [
+            ['E', 'F', 'G', 'H', 'A', 'B', 'C', 'D'],
+            ['K', 'L', 'I', 'J'],
+            ['N', 'M'],
+            ['O']
+        ]
+    elif year == 2008:
         pick_order = [
             ['E', 'F', 'G', 'H', 'A', 'B', 'C', 'D'],
             ['K', 'L', 'I', 'J'],
