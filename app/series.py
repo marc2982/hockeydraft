@@ -67,3 +67,6 @@ class Series:
 
     def get_series_summary(self) -> str:
         return f"{self.get_top_seed_short()} - {self.get_bottom_seed_short()}"
+
+    def games_played(self) -> int:
+        return self.top_seed_wins + self.bottom_seed_wins

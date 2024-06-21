@@ -172,7 +172,7 @@ class HtmlGenerator:
                             self.a.span(_t=series.get_bottom_seed_short(), klass=bottom_seed_class)
                     self.a.th(_t='Points')
                     self.a.th(_t='Rank')
-                    self.a.th(_t='Possible Points')
+                    self.a.th(_t='Maximum Possible Points')
                 all_points = list(map(lambda r: r.total_points, rows))
                 for row in sorted(rows, key=lambda x: x.person):
                     rank = self.excel_rank(all_points, row.total_points)
