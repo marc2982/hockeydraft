@@ -3,8 +3,8 @@ import csv
 import os
 import sys
 
-from .common import Scoring, Winner, Pick, PickResult, PickStatus, Row, SummaryRow
-from .leader_calculator import LeaderCalculator
+from .common import Scoring, Winner, Pick, PickResult, PickStatus, Row
+from .projection_calculator import ProjectionCalculator
 from .html_generator import HtmlGenerator
 from .nhl_api_handler import NhlApiHandler
 from .series import Series, ALL_SERIES
@@ -314,11 +314,11 @@ def strip_rank(team_name: str) -> str:
 
 
 def build_data(
-        scoring: Scoring,
-        nhl_api_handler: NhlApiHandler,
-        picks_by_person: dict[str, list[Pick]],
-        series_letters: list[str]
-        ) -> list[Row]:
+    scoring: Scoring,
+    nhl_api_handler: NhlApiHandler,
+    picks_by_person: dict[str, list[Pick]],
+    series_letters: list[str]
+) -> list[Row]:
     rows = []
 
     for person, picks in picks_by_person.items():
@@ -443,6 +443,7 @@ def main(folder_name: str) -> tuple[str, str]:
     nhl_api_handler.load()
 
     all_rows = []
+    all_picks = []
     for i in range(4):  # 4 rounds in the playoffs
         round = i + 1
         round_scoring = SCORING[i]
@@ -454,6 +455,7 @@ def main(folder_name: str) -> tuple[str, str]:
             else:
                 csv_rows = read_csv(file_path, True)
                 picks_by_person = read_picks(csv_rows, nhl_api_handler, year, round)
+            all_picks.append(picks_by_person)
             round_rows = build_data(round_scoring, nhl_api_handler, picks_by_person, ALL_SERIES[i])
             all_rows.append(round_rows)
         else:
@@ -469,10 +471,22 @@ def main(folder_name: str) -> tuple[str, str]:
                 ))
             all_rows.append(round_rows)
 
+    winner_projections = ProjectionCalculator(
+        all_rows,
+        all_picks,
+        year
+    ).calculate(
+        SCORING,
+        nhl_api_handler.get_scf_teams()
+    )
     html = HtmlGenerator(
         nhl_api_handler,
         all_rows
-    ).make_html(SCORING, year)
+    ).make_html(
+        SCORING,
+        year,
+        winner_projections
+    )
     out_path = os.path.join(folder_name, 'index.html')
     return html, out_path
 

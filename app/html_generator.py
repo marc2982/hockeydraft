@@ -1,8 +1,9 @@
 from airium import Airium
 
-from .common import Row, Scoring, SummaryRow
+from .common import Row, Scoring, SummaryRow, Team
 from .leader_calculator import LeaderCalculator
 from .nhl_api_handler import NhlApiHandler
+from .projection_calculator import ProjectionCell
 
 js = """
 window.onload = function() {
@@ -14,6 +15,19 @@ window.onload = function() {
             [1, 'desc'],
             [2, 'desc'],
         ],
+        columnDefs: [
+            { targets: [0,1,2], className: 'dt-body-center dt-head-center' }
+        ]
+    });
+
+    $('#projectionTable').DataTable({
+        paging: false,
+        searching: false,
+        info: false,
+        order: [
+            [1, 'asc'],
+        ],
+        ordering: false,
         columnDefs: [
             { targets: [0,1,2], className: 'dt-body-center dt-head-center' }
         ]
@@ -39,7 +53,8 @@ class HtmlGenerator:
     def make_html(
         self,
         scoring: list[Scoring],
-        year: int
+        year: int,
+        projections: dict[str, dict[int, ProjectionCell]]
     ) -> str:
         self.a('<!DOCTYPE html>')
         with self.a.html(lang='en'):
@@ -69,6 +84,7 @@ class HtmlGenerator:
                 self._display_summary_table()
                 for i, rows in enumerate(self.all_rows):
                     self._display_round(i+1, rows, scoring[i])
+                self._display_projections(projections)
         return str(self.a)
 
     def _generate_summary_rows(self) -> dict[str, SummaryRow]:
@@ -192,6 +208,30 @@ class HtmlGenerator:
                         self.a.td(_t=self.to_str(row.total_points), klass='points' + leader_class)
                         self.a.td(_t=rank, klass='rank' + leader_class)
                         self.a.td(_t=self.to_str(row.possible_points), klass='possible_points')
+
+    def _display_projections(self, projections: dict[int, dict[str, ProjectionCell]]):
+        with self.a.div():
+            self.a.h2(_t='Final Projection', href='projections')
+            with self.a.table(id='projectionTable', klass='table table-striped containing_table table-hover fw-bold'):
+                with self.a.thead():
+                    # grab any games to get the list of teams playing
+                    teams = projections[next(iter(projections))]
+                    with self.a.tr():
+                        self.a.th(_t="")
+                        for team in teams:
+                            with self.a.th():
+                                with self.a.div(klass=f'pick {team.name.lower()}'):
+                                    self.a.img(src=team.logo, alt=team.short)
+                with self.a.tbody():
+                    for games, teams in projections.items():
+                        with self.a.tr():
+                            self.a.td(_t=games)
+                            for team in teams:
+                                cell = projections[games][team]
+                                with self.a.td(klass="impossible" if not cell.is_possible else ""):
+                                    with self.a.div():
+                                        self.a.div(_t=f"Winner(s): {', '. join(cell.winners)}", style='float: left; width: 50%;')
+                                        self.a.div(_t=f"Loser(s): {', '.join(cell.losers)}", style='float: right; width: 50%;')
 
     @staticmethod
     # hack necessary because airium considers 0 == None and doesnt display it

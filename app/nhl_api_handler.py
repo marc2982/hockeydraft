@@ -116,7 +116,25 @@ class NhlApiHandler:
             if series.letter == letter
         )
 
+    def get_series_or_none(self, letter: str) -> Series:
+        try:
+            return self.get_series(letter)
+        except (StopIteration):
+            return None
+
     def series_iter(self, round: int) -> Generator[str, any, any]:
         order = ALL_SERIES[round-1]
         for letter in order:
             yield self.get_series(letter)
+
+    def get_scf_teams(self) -> list[Team]:
+        teams = []
+        for letter in ALL_SERIES[2]:  # round 3 winners
+            series = self.get_series_or_none(letter)
+            if not series:
+                continue
+            winner = series.get_winner()
+            if not winner:
+                continue
+            teams.append(winner.team)
+        return teams

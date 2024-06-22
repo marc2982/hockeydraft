@@ -112,3 +112,8 @@ table.table.table-striped td {
     font-weight: bolder;
     background-color: #66B666;
 }
+
+.impossible ,
+.impossible td {
+    background-color: #EB7676 !important;
+}
