@@ -63,6 +63,7 @@ def read_old_picks(
             person = "Chrissy"
         elif person.lower() == "m.c.b.":
             person = "Marc"
+        person = person.capitalize()
 
         col_iter = iter(row[1:])
 
@@ -95,7 +96,7 @@ def read_picks(
     trs = {}
     for row in rows:
         tds = []
-        person = row[1]
+        person = row[1].capitalize()
         col_iter = iter(row[2:])
 
         i = 0

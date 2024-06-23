@@ -90,12 +90,19 @@ class ProjectionCalculator:
 
     def _calculate_third_round_points(self) -> defaultdict[str, int]:
         points = defaultdict(int)
-        for round_rows in self.all_rows:
+        first_three_rounds = slice(0, 3)
+        for round_rows in self.all_rows[first_three_rounds]:
             for row in round_rows:
                 points[row.person] += row.total_points
         return points
 
-    def _calculate_fourth_round(self, scoring: Scoring, pick: Pick, team: str, games: int) -> int:
+    def _calculate_fourth_round(
+        self,
+        scoring: Scoring,
+        pick: Pick,
+        team: str,
+        games: int
+    ) -> int:
         team_points = scoring.team if pick.team == team else 0
         game_points = scoring.games if pick.games == games else 0
         bonus_points = scoring.bonus if team_points > 0 and game_points > 0 else 0
