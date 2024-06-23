@@ -46,9 +46,9 @@ class ProjectionCalculator:
                     )
 
                 max_points = max(points.values())
-                winners = [person for person, score in points.items() if score == max_points]
+                winners = [f"{person} ({score} pts)" for person, score in points.items() if score == max_points]
                 min_points = min(points.values())
-                losers = [person for person, score in points.items() if score == min_points]
+                losers = [f"{person} ({score} pts)" for person, score in points.items() if score == min_points]
 
                 is_possible = True  # TODO
                 cells[team] = ProjectionCell(winners, losers, is_possible)

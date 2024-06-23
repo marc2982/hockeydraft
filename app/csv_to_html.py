@@ -396,35 +396,33 @@ def get_points(scoring: Scoring, team_status: PickStatus, games_status: PickStat
 
 
 # this function should ONLY be called when there is no winner
-def calculate_possible_points(pick: Pick, series: Series, scoring: Scoring, team_status: PickStatus, games_status: PickStatus) -> int:
+def calculate_possible_points(
+    pick: Pick,
+    series: Series,
+    scoring: Scoring,
+    team_status: PickStatus,
+    games_status: PickStatus
+) -> int:
     possible_from_team = scoring.team if team_status in [PickStatus.CORRECT, PickStatus.UNKNOWN] else 0
     possible_from_games = scoring.games if games_status in [PickStatus.CORRECT, PickStatus.UNKNOWN] else 0
 
-    is_bonus_possible = False
-    is_series_tied = series.top_seed_wins == series.bottom_seed_wins
-    games_played = series.games_played()
-
-    if is_series_tied:
-        min_games_to_win = 7 - games_played
-        is_bonus_possible = pick.games >= min_games_to_win
+    if series.top_seed_wins < series.bottom_seed_wins:
+        current_loser_team = series.bottom_seed
+        current_loser_wins = series.bottom_seed_wins
+        current_leader_team = series.top_seed
+        current_leader_wins = series.top_seed_wins
     else:
-        if series.top_seed_wins < series.bottom_seed_wins:
-            current_loser_team = series.bottom_seed
-            current_loser_wins = series.bottom_seed_wins
-            current_leader_team = series.top_seed
-            current_leader_wins = series.top_seed_wins
-        else:
-            current_loser_team = series.top_seed
-            current_loser_wins = series.top_seed_wins
-            current_leader_team = series.bottom_seed
-            current_leader_wins = series.bottom_seed_wins
+        current_loser_team = series.top_seed
+        current_loser_wins = series.top_seed_wins
+        current_leader_team = series.bottom_seed
+        current_leader_wins = series.bottom_seed_wins
 
-        num_games_leader_needs = 4 - current_leader_wins
-        num_games_loser_needs = 4 - current_loser_wins
+    num_games_leader_needs = 4 - current_leader_wins
+    num_games_loser_needs = 4 - current_loser_wins
 
-        is_loser_bonus_possible = pick.team == current_loser_team and pick.games >= (num_games_loser_needs + current_loser_wins + current_leader_wins)
-        is_leader_bonus_possible = pick.team == current_leader_team and pick.games >= (num_games_leader_needs + current_leader_wins + current_loser_wins)
-        is_bonus_possible = is_loser_bonus_possible or is_leader_bonus_possible
+    is_loser_bonus_possible = pick.team == current_loser_team and pick.games >= (num_games_loser_needs + current_loser_wins + current_leader_wins)
+    is_leader_bonus_possible = pick.team == current_leader_team and pick.games >= (num_games_leader_needs + current_leader_wins + current_loser_wins)
+    is_bonus_possible = is_loser_bonus_possible or is_leader_bonus_possible
 
     if is_bonus_possible:
         return possible_from_team + possible_from_games + scoring.bonus
