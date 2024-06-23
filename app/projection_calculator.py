@@ -73,9 +73,11 @@ class ProjectionCalculator:
         scf_series = self.api.get_scf_series()
 
         if scf_series.is_over():
+            if scf_series.total_games() != games:
+                return False
             if scf_series.is_top_seed_winner():
-                return team == scf_series.top_seed and games == scf_series.top_seed_wins
-            return team == scf_series.bottom_seed and games == scf_series.bottom_seed_wins
+                return team == scf_series.top_seed
+            return team == scf_series.bottom_seed
 
         top_seed = (scf_series.top_seed, scf_series.top_seed_wins)
         bottom_seed = (scf_series.bottom_seed, scf_series.bottom_seed_wins)
