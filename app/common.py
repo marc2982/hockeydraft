@@ -25,3 +25,11 @@ class Pick:
 
     def get_short_desc(self):
         return f"{self.team.short} {self.games}"
+
+
+def excel_rank(values, target):
+    sorted_values = sorted(values, reverse=True)
+    try:
+        return sorted_values.index(target) + 1
+    except ValueError:
+        return None

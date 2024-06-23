@@ -1,6 +1,6 @@
 from airium import Airium
 
-from .common import Row, Scoring, SummaryRow, Team
+from .common import Row, Scoring, SummaryRow, excel_rank
 from .leader_calculator import LeaderCalculator
 from .nhl_api_handler import NhlApiHandler
 from .projection_calculator import ProjectionCell
@@ -191,7 +191,7 @@ class HtmlGenerator:
                     self.a.th(_t='Maximum Possible Points')
                 all_points = list(map(lambda r: r.total_points, rows))
                 for row in sorted(rows, key=lambda x: x.person):
-                    rank = self.excel_rank(all_points, row.total_points)
+                    rank = excel_rank(all_points, row.total_points)
                     leader_class = ' leader' if rank == 1 and row.total_points > 0 else ''
                     with self.a.tr():
                         self.a.td(_t=row.person, klass='person' + leader_class)
@@ -230,8 +230,22 @@ class HtmlGenerator:
                                 cell = projections[games][team]
                                 with self.a.td(klass="impossible" if not cell.is_possible else ""):
                                     with self.a.div():
-                                        self.a.div(_t=f"Winner(s): {', '. join(cell.winners)}", style='float: left; width: 50%;')
-                                        self.a.div(_t=f"Loser(s): {', '.join(cell.losers)}", style='float: right; width: 50%;')
+                                        with self.a.table(style="width: 100%"):
+                                            with self.a.tr():
+                                                self.a.td(_t=f"1st: {', '. join(cell.first)}", style="width: 50%")
+                                                self.a.td(_t=f"Loser(s): {', '. join(cell.losers)}", rowspan=3, style="width: 50%")
+                                            with self.a.tr():
+                                                self.a.td(_t=f"2nd: {', '. join(cell.second)}")
+                                            with self.a.tr():
+                                                self.a.td(_t=f"3rd: {', '. join(cell.third)}")
+
+    @staticmethod
+    def get_winners_str(cell: ProjectionCell) -> str:
+        s = []
+        s.append(f"1st: {', '. join(cell.first)}")
+        s.append(f"2nd: {', '. join(cell.second)}")
+        s.append(f"3rd: {', '. join(cell.third)}")
+        return "\n".join(s)
 
     @staticmethod
     # hack necessary because airium considers 0 == None and doesnt display it
@@ -243,14 +257,6 @@ class HtmlGenerator:
         summary_rows = scores.values()
         all_points = list(map(lambda r: r.total_points, summary_rows))
         return {
-            summary_row.person: HtmlGenerator.excel_rank(all_points, summary_row.total_points)
+            summary_row.person: excel_rank(all_points, summary_row.total_points)
             for summary_row in summary_rows
         }
-
-    @staticmethod
-    def excel_rank(values, target):
-        sorted_values = sorted(values, reverse=True)
-        try:
-            return sorted_values.index(target) + 1
-        except ValueError:
-            return None

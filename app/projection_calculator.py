@@ -1,12 +1,14 @@
 from collections import defaultdict
 from dataclasses import dataclass
 
-from .common import Row, Team, Scoring, Pick
+from .common import Row, Team, Scoring, Pick, excel_rank
 
 
 @dataclass
 class ProjectionCell:
-    winners: list[str]
+    first: list[str]
+    second: list[str]
+    third: list[str]
     losers: list[str]
     is_possible: bool
 
@@ -45,13 +47,18 @@ class ProjectionCalculator:
                         games
                     )
 
-                max_points = max(points.values())
-                winners = [f"{person} ({score} pts)" for person, score in points.items() if score == max_points]
-                min_points = min(points.values())
-                losers = [f"{person} ({score} pts)" for person, score in points.items() if score == min_points]
+                all_points = points.values()
+                rank_map = {person: excel_rank(all_points, score) for person, score in points.items()}
+                loser_rank = max(rank_map.values())
 
                 is_possible = True  # TODO
-                cells[team] = ProjectionCell(winners, losers, is_possible)
+                cells[team] = ProjectionCell(
+                    first=[f"{person} ({points[person]} pts)" for person, rank in rank_map.items() if rank == 1],
+                    second=[f"{person} ({points[person]} pts)" for person, rank in rank_map.items() if rank == 2],
+                    third=[f"{person} ({points[person]} pts)" for person, rank in rank_map.items() if rank == 3],
+                    losers=[f"{person} ({points[person]} pts)" for person, rank in rank_map.items() if rank == loser_rank],
+                    is_possible=is_possible
+                )
             projections[games] = cells
         return projections
 
