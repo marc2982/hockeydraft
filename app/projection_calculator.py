@@ -2,6 +2,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 
 from .common import Row, Team, Scoring, Pick, excel_rank
+from .nhl_api_handler import NhlApiHandler
 
 
 @dataclass
@@ -17,9 +18,16 @@ class ProjectionCell:
 
 
 class ProjectionCalculator:
-    def __init__(self, all_rows: list[list[Row]], all_picks: list[dict[str, Pick]], year: int):
+    def __init__(
+        self,
+        all_rows: list[list[Row]],
+        all_picks: list[dict[str, Pick]],
+        nhl_api_handler: NhlApiHandler,
+        year: int
+    ):
         self.all_picks = all_picks
         self.all_rows = all_rows
+        self.api = nhl_api_handler
         self.year = year
 
     def calculate(
@@ -51,16 +59,29 @@ class ProjectionCalculator:
                 rank_map = {person: excel_rank(all_points, score) for person, score in points.items()}
                 loser_rank = max(rank_map.values())
 
-                is_possible = True  # TODO
                 cells[team] = ProjectionCell(
                     first=[f"{person} ({points[person]} pts)" for person, rank in rank_map.items() if rank == 1],
                     second=[f"{person} ({points[person]} pts)" for person, rank in rank_map.items() if rank == 2],
                     third=[f"{person} ({points[person]} pts)" for person, rank in rank_map.items() if rank == 3],
                     losers=[f"{person} ({points[person]} pts)" for person, rank in rank_map.items() if rank == loser_rank],
-                    is_possible=is_possible
+                    is_possible=self._calculate_is_possible(team, games)
                 )
             projections[games] = cells
         return projections
+
+    def _calculate_is_possible(self, team, games) -> bool:
+        scf_series = self.api.get_scf_series()
+        top_seed = (scf_series.top_seed, scf_series.top_seed_wins)
+        bottom_seed = (scf_series.bottom_seed, scf_series.bottom_seed_wins)
+        if top_seed[0] == team:
+            seed = top_seed
+            other_seed = bottom_seed
+        else:
+            other_seed = top_seed
+            seed = bottom_seed
+        min_games_to_win = (4 - seed[1]) + seed[1] + other_seed[1]
+        a = games >= min_games_to_win
+        return a
 
     def _calculate_third_round_points(self) -> defaultdict[str, int]:
         points = defaultdict(int)

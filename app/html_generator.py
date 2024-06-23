@@ -240,14 +240,6 @@ class HtmlGenerator:
                                                 self.a.td(_t=f"3rd: {', '. join(cell.third)}")
 
     @staticmethod
-    def get_winners_str(cell: ProjectionCell) -> str:
-        s = []
-        s.append(f"1st: {', '. join(cell.first)}")
-        s.append(f"2nd: {', '. join(cell.second)}")
-        s.append(f"3rd: {', '. join(cell.third)}")
-        return "\n".join(s)
-
-    @staticmethod
     # hack necessary because airium considers 0 == None and doesnt display it
     def to_str(num: int) -> str:
         return '0' if num == 0 else str(num)

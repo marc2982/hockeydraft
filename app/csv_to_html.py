@@ -472,6 +472,7 @@ def main(folder_name: str) -> tuple[str, str]:
     winner_projections = ProjectionCalculator(
         all_rows,
         all_picks,
+        nhl_api_handler,
         year
     ).calculate(
         SCORING,

@@ -127,6 +127,9 @@ class NhlApiHandler:
         for letter in order:
             yield self.get_series(letter)
 
+    def get_scf_series(self) -> Series:
+        return self.get_series(ALL_SERIES[-1][0])
+
     def get_scf_teams(self) -> list[Team]:
         teams = []
         for letter in ALL_SERIES[2]:  # round 3 winners
