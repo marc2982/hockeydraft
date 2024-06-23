@@ -223,12 +223,19 @@ class HtmlGenerator:
                                 with self.a.div(klass=f'pick {team.name.lower()}'):
                                     self.a.img(src=team.logo, alt=team.short)
                 with self.a.tbody():
+                    scf_series = self.api.get_scf_series()
                     for games, teams in projections.items():
                         with self.a.tr():
                             self.a.td(_t=games)
                             for team in teams:
                                 cell = projections[games][team]
-                                with self.a.td(klass="impossible" if not cell.is_possible else ""):
+                                if not cell.is_possible:
+                                    klass = "incorrect"
+                                elif scf_series.is_over():
+                                    klass = "correct"
+                                else:
+                                    klass = ""
+                                with self.a.td(klass=klass):
                                     with self.a.div():
                                         with self.a.table(style="width: 100%"):
                                             with self.a.tr():

@@ -71,6 +71,12 @@ class ProjectionCalculator:
 
     def _calculate_is_possible(self, team, games) -> bool:
         scf_series = self.api.get_scf_series()
+
+        if scf_series.is_over():
+            if scf_series.is_top_seed_winner():
+                return team == scf_series.top_seed and games == scf_series.top_seed_wins
+            return team == scf_series.bottom_seed and games == scf_series.bottom_seed_wins
+
         top_seed = (scf_series.top_seed, scf_series.top_seed_wins)
         bottom_seed = (scf_series.bottom_seed, scf_series.bottom_seed_wins)
         if top_seed[0] == team:
@@ -80,8 +86,7 @@ class ProjectionCalculator:
             other_seed = top_seed
             seed = bottom_seed
         min_games_to_win = (4 - seed[1]) + seed[1] + other_seed[1]
-        a = games >= min_games_to_win
-        return a
+        return games >= min_games_to_win
 
     def _calculate_third_round_points(self) -> defaultdict[str, int]:
         points = defaultdict(int)
